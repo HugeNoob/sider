@@ -1,4 +1,4 @@
-#include <arpa/inet.h>
+#include <bits/stdc++.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -52,11 +52,24 @@ int main(int argc, char **argv) {
 
   std::cout << "Waiting for a client to connect...\n";
 
-  accept(server_fd, (struct sockaddr *)&client_addr,
-         (socklen_t *)&client_addr_len);
+  int client_socket = accept(server_fd, (struct sockaddr *)&client_addr,
+                             (socklen_t *)&client_addr_len);
   std::cout << "Client connected\n";
 
-  close(server_fd);
+  char buffer[1024];
+  int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 
+  if (recv_bytes < 0) {
+    std::cout << "Error receiving bytes\n";
+  } else if (recv_bytes == 0) {
+    std::cout << "Client disconnected\n";
+  } else {
+    std::cout << "Message received: " << buffer << '\n';
+    std::string res = "+PONG\r\n";
+    send(client_socket, res.c_str(), res.size(), 0);
+  }
+
+  close(client_socket);
+  close(server_fd);
   return 0;
 }
