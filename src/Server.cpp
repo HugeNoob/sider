@@ -1,4 +1,4 @@
-#include <bits/stdc++.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -57,16 +57,20 @@ int main(int argc, char **argv) {
   std::cout << "Client connected\n";
 
   char buffer[1024];
-  int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
+  while (true) {
+    int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 
-  if (recv_bytes < 0) {
-    std::cout << "Error receiving bytes\n";
-  } else if (recv_bytes == 0) {
-    std::cout << "Client disconnected\n";
-  } else {
-    std::cout << "Message received: " << buffer << '\n';
-    std::string res = "+PONG\r\n";
-    send(client_socket, res.c_str(), res.size(), 0);
+    if (recv_bytes < 0) {
+      std::cout << "Error receiving bytes\n";
+      break;
+    } else if (recv_bytes == 0) {
+      std::cout << "Client disconnected\n";
+      break;
+    } else {
+      std::cout << "Message received: " << buffer << '\n';
+      std::string res = "+PONG\r\n";
+      send(client_socket, res.c_str(), res.size(), 0);
+    }
   }
 
   close(client_socket);
