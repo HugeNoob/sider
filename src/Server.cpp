@@ -9,11 +9,15 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <string>
-#include <thread>
 #include <vector>
 
+#include "parser_utils.h"
+
 void handle_client(int index, std::vector<int> &client_sockets);
+void ping_command(int index, std::vector<int> &client_sockets);
+void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets);
 
 int main(int argc, char **argv) {
     // You can use print statements as follows for debugging, they'll be visible
@@ -51,6 +55,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // Event Loop to handle clients
     std::cout << "Waiting for a client to connect...\n";
     std::vector<int> client_sockets;
     while (true) {
@@ -91,7 +96,7 @@ int main(int argc, char **argv) {
 }
 
 void handle_client(int index, std::vector<int> &client_sockets) {
-    char buffer[1024];
+    char buffer[1024] = {};
     int client_socket = client_sockets[index];
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 
@@ -99,13 +104,40 @@ void handle_client(int index, std::vector<int> &client_sockets) {
         std::cout << "Error receiving bytes\n";
         close(client_socket);
         client_sockets[index] = -1;
+        return;
     } else if (recv_bytes == 0) {
         std::cout << "Client disconnected\n";
         close(client_socket);
         client_sockets[index] = -1;
-    } else {
-        std::cout << "Message received: " << buffer << '\n';
-        std::string res = "+PONG\r\n";
-        send(client_socket, res.c_str(), res.size(), 0);
+        return;
     }
+
+    std::string msg(buffer);
+    std::cout << "Bytes received: " << recv_bytes << '\n';
+    std::cout << "Message received: ";
+    write_string(msg);
+    std::cout << '\n';
+
+    std::vector<std::string> words = parse_message(msg);
+    if (words[0] == "PING") {
+        std::cout << "Handling case 1 PING\n";
+        ping_command(index, client_sockets);
+    } else if (words[0] == "ECHO") {
+        std::cout << "Handling case 2 ECHO\n";
+        echo_command(words, index, client_sockets);
+    } else {
+        std::cout << "Handling case 3 PING\n";
+        ping_command(index, client_sockets);
+    }
+}
+
+void ping_command(int index, std::vector<int> &client_sockets) {
+    std::string res = "+PONG\r\n";
+    send(client_sockets[index], res.c_str(), res.size(), 0);
+}
+
+void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets) {
+    std::vector<std::string> echo_words(words.begin() + 1, words.end());
+    std::string echo_string = serialize_message(echo_words);
+    send(client_sockets[index], echo_string.c_str(), echo_string.size(), 0);
 }
