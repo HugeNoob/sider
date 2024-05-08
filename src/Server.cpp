@@ -11,13 +11,18 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "parser_utils.h"
 
-void handle_client(int index, std::vector<int> &client_sockets);
+void handle_client(int index, std::vector<int> &client_sockets, std::unordered_map<std::string, std::string> &store);
 void ping_command(int index, std::vector<int> &client_sockets);
 void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets);
+void set_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
+                 std::unordered_map<std::string, std::string> &store);
+void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
+                 std::unordered_map<std::string, std::string> &store);
 
 int main(int argc, char **argv) {
     // You can use print statements as follows for debugging, they'll be visible
@@ -55,6 +60,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    std::unordered_map<std::string, std::string> store;
+
     // Event Loop to handle clients
     std::cout << "Waiting for a client to connect...\n";
     std::vector<int> client_sockets;
@@ -84,7 +91,7 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets);
+            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, store);
         }
 
         // Clear clients who errored / closed during handling
@@ -95,7 +102,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void handle_client(int index, std::vector<int> &client_sockets) {
+void handle_client(int index, std::vector<int> &client_sockets, std::unordered_map<std::string, std::string> &store) {
     char buffer[1024] = {};
     int client_socket = client_sockets[index];
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
@@ -125,19 +132,46 @@ void handle_client(int index, std::vector<int> &client_sockets) {
     } else if (words[0] == "ECHO") {
         std::cout << "Handling case 2 ECHO\n";
         echo_command(words, index, client_sockets);
+    } else if (words[0] == "SET") {
+        std::cout << "Handling case 3 SET\n";
+        set_command(words, index, client_sockets, store);
+    } else if (words[0] == "GET") {
+        std::cout << "Handling case 4 GET\n";
+        get_command(words, index, client_sockets, store);
     } else {
-        std::cout << "Handling case 3 PING\n";
+        std::cout << "Handling else case\n";
         ping_command(index, client_sockets);
     }
 }
 
 void ping_command(int index, std::vector<int> &client_sockets) {
-    std::string res = "+PONG\r\n";
-    send(client_sockets[index], res.c_str(), res.size(), 0);
+    std::string val = "PONG";
+    std::string message = encode_simple_string(val);
+    send(client_sockets[index], message.c_str(), message.size(), 0);
 }
 
 void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets) {
     std::vector<std::string> echo_words(words.begin() + 1, words.end());
-    std::string echo_string = serialize_message(echo_words);
+    std::string echo_string = encode_array(echo_words);
     send(client_sockets[index], echo_string.c_str(), echo_string.size(), 0);
+}
+
+void set_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
+                 std::unordered_map<std::string, std::string> &store) {
+    std::string val = "OK";
+    std::string message = encode_simple_string(val);
+    store[words[1]] = words[2];
+    send(client_sockets[index], message.c_str(), message.size(), 0);
+}
+
+void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
+                 std::unordered_map<std::string, std::string> &store) {
+    std::string val;
+    if (store.find(words[1]) == store.end()) {
+        val = "-1";
+    } else {
+        val = store[words[1]];
+    }
+    std::string message = encode_bulk_string(val);
+    send(client_sockets[index], message.c_str(), message.size(), 0);
 }

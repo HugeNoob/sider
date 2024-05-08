@@ -41,7 +41,15 @@ std::vector<std::string> parse_array(std::string &raw_message) {
     return res;
 }
 
-std::string serialize_message(std::vector<std::string> &words) {
+std::string encode_simple_string(std::string &message) {
+    return "+" + message + "\r\n";
+}
+
+std::string encode_bulk_string(std::string &message) {
+    return "$" + std::to_string(message.size()) + "\r\n" + message + "\r\n";
+}
+
+std::string encode_array(std::vector<std::string> &words) {
     std::string res = "";
     if (words.size() > 1) {
         res += "*" + std::to_string(words.size()) + "\r\n";

@@ -12,7 +12,11 @@ std::vector<std::string> parse_simple_string(std::string &raw_message);
 
 std::vector<std::string> parse_array(std::string &raw_message);
 
-std::string serialize_message(std::vector<std::string> &words);
+std::string encode_simple_string(std::string &message);
+
+std::string encode_bulk_string(std::string &message);
+
+std::string encode_array(std::vector<std::string> &words);
 
 std::vector<std::string> split(std::string &s, std::string &delimiter);
 
