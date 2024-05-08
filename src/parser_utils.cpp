@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+const std::string null_bulk_string = "$-1\r\n";
+
 std::vector<std::string> parse_message(std::string &raw_message) {
     std::vector<std::string> res;
     if (raw_message[0] == '+') {

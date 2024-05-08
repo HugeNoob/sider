@@ -6,9 +6,11 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -16,13 +18,17 @@
 
 #include "parser_utils.h"
 
-void handle_client(int index, std::vector<int> &client_sockets, std::unordered_map<std::string, std::string> &store);
+using TimeStampedStringMap =
+    std::unordered_map<std::string,
+                       std::pair<std::string, std::optional<std::chrono::time_point<std::chrono::system_clock>>>>;
+
+void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStringMap &store);
 void ping_command(int index, std::vector<int> &client_sockets);
 void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets);
 void set_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 std::unordered_map<std::string, std::string> &store);
+                 TimeStampedStringMap &store);
 void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 std::unordered_map<std::string, std::string> &store);
+                 TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
     // You can use print statements as follows for debugging, they'll be visible
@@ -60,7 +66,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::unordered_map<std::string, std::string> store;
+    TimeStampedStringMap store;
 
     // Event Loop to handle clients
     std::cout << "Waiting for a client to connect...\n";
@@ -102,7 +108,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void handle_client(int index, std::vector<int> &client_sockets, std::unordered_map<std::string, std::string> &store) {
+void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStringMap &store) {
     char buffer[1024] = {};
     int client_socket = client_sockets[index];
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
@@ -126,16 +132,18 @@ void handle_client(int index, std::vector<int> &client_sockets, std::unordered_m
     std::cout << '\n';
 
     std::vector<std::string> words = parse_message(msg);
-    if (words[0] == "PING") {
+    std::string command = words[0];
+    std::transform(command.begin(), command.end(), command.begin(), toupper);
+    if (command == "PING") {
         std::cout << "Handling case 1 PING\n";
         ping_command(index, client_sockets);
-    } else if (words[0] == "ECHO") {
+    } else if (command == "ECHO") {
         std::cout << "Handling case 2 ECHO\n";
         echo_command(words, index, client_sockets);
-    } else if (words[0] == "SET") {
+    } else if (command == "SET") {
         std::cout << "Handling case 3 SET\n";
         set_command(words, index, client_sockets, store);
-    } else if (words[0] == "GET") {
+    } else if (command == "GET") {
         std::cout << "Handling case 4 GET\n";
         get_command(words, index, client_sockets, store);
     } else {
@@ -157,21 +165,36 @@ void echo_command(std::vector<std::string> words, int index, std::vector<int> &c
 }
 
 void set_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 std::unordered_map<std::string, std::string> &store) {
+                 TimeStampedStringMap &store) {
     std::string val = "OK";
     std::string message = encode_simple_string(val);
-    store[words[1]] = words[2];
+
+    std::optional<std::chrono::time_point<std::chrono::system_clock>> end_time;
+    if (words.size() > 3) {
+        end_time = std::chrono::system_clock::now() + std::chrono::milliseconds(stoi(words.back()));
+    } else {
+        end_time = std::nullopt;
+    }
+
+    store[words[1]] = {words[2], end_time};
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }
 
 void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 std::unordered_map<std::string, std::string> &store) {
-    std::string val;
+                 TimeStampedStringMap &store) {
+    std::string message;
     if (store.find(words[1]) == store.end()) {
-        val = "-1";
+        message = null_bulk_string;
     } else {
-        val = store[words[1]];
+        bool expired =
+            store[words[1]].second.has_value() && std::chrono::system_clock::now() >= store[words[1]].second.value();
+
+        if (expired) {
+            store.erase(store.find(words[1]));
+            message = null_bulk_string;
+        } else {
+            message = encode_bulk_string(store[words[1]].first);
+        }
     }
-    std::string message = encode_bulk_string(val);
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }

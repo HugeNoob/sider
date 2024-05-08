@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+extern const std::string null_bulk_string;
+
 std::string get_first_word(const std::string &input);
 
 std::vector<std::string> parse_message(std::string &raw_message);
