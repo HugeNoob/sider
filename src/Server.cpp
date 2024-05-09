@@ -31,6 +31,11 @@ void get_command(std::vector<std::string> words, int index, std::vector<int> &cl
                  TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
+    int port = 6379;  // default port
+    if (argc > 2 && std::string(argv[1]) == "--port") {
+        port = std::stoi(argv[2]);
+    }
+
     // You can use print statements as follows for debugging, they'll be visible
     // when running tests.
     std::cout << "Logs from your program will appear here!\n";
@@ -53,7 +58,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(6379);
+    server_addr.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
         std::cerr << "Failed to bind to port 6379\n";
