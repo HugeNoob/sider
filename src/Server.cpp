@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <boost/program_options.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -20,8 +19,6 @@
 #include "commands.h"
 #include "parser_utils.h"
 
-namespace po = boost::program_options;
-
 void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStringMap &store);
 
 struct CommandLineOptions {
@@ -30,21 +27,34 @@ struct CommandLineOptions {
 
     static CommandLineOptions parse(int argc, char **argv) {
         CommandLineOptions options;
+        int c;
 
-        po::options_description desc("Allowed options");
-        desc.add_options()("port", po::value<int>(&options.port)->default_value(6379), "port number")(
-            "replicaof", po::value<std::vector<int>>(&options.replicaOf)->multitoken(), "replica of <host> <port>");
+        // Default port
+        options.port = 6379;
 
-        po::variables_map vm;
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-
-        try {
-            po::notify(vm);
-        } catch (const std::exception &e) {
-            std::cerr << "Error parsing command line options: " << e.what() << std::endl;
-            exit(EXIT_FAILURE);
+        for (int i = 1; i < argc; i++) {
+            std::string arg = argv[i];
+            if (arg == "--port") {
+                if (i + 1 < argc) {
+                    options.port = std::stoi(argv[++i]);
+                } else {
+                    std::cerr << "Error: --port requires an argument.\n";
+                    exit(1);
+                }
+            } else if (arg == "--replicaof") {
+                i++;
+                while (i < argc) {
+                    if (argv[i][0] == '-') {
+                        i--;
+                        break;
+                    }
+                    options.replicaOf.push_back(std::stoi(argv[i++]));
+                }
+            } else {
+                std::cerr << "Error: Unknown option '" << arg << "'.\n";
+                exit(1);
+            }
         }
-
         return options;
     }
 };
