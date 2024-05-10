@@ -29,6 +29,8 @@ void set_command(std::vector<std::string> words, int index, std::vector<int> &cl
                  TimeStampedStringMap &store);
 void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
                  TimeStampedStringMap &store);
+void info_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
+                  TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
     int port = 6379;  // default port
@@ -151,6 +153,9 @@ void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStrin
     } else if (command == "GET") {
         std::cout << "Handling case 4 GET\n";
         get_command(words, index, client_sockets, store);
+    } else if (command == "INFO") {
+        std::cout << "Handling case 5 INFO\n";
+        info_command(words, index, client_sockets, store);
     } else {
         std::cout << "Handling else case\n";
         ping_command(index, client_sockets);
@@ -201,5 +206,12 @@ void get_command(std::vector<std::string> words, int index, std::vector<int> &cl
             message = encode_bulk_string(store[words[1]].first);
         }
     }
+    send(client_sockets[index], message.c_str(), message.size(), 0);
+}
+
+void info_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
+                  TimeStampedStringMap &store) {
+    std::string val = "role:master";
+    std::string message = encode_bulk_string(val);
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }
