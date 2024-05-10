@@ -10,7 +10,11 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 find_package(asio CONFIG REQUIRED)
 
-add_executable(server ${SOURCE_FILES} src/parser_utils.cpp)
+add_executable(server ${SOURCE_FILES} src/parser_utils.cpp src/commands.cpp)
 
 target_link_libraries(server PRIVATE asio asio::asio)
 target_link_libraries(server PRIVATE Threads::Threads)
+
+find_package(Boost REQUIRED COMPONENTS program_options)
+include_directories(${Boost_INCLUDE_DIRS})
+target_link_libraries(server PRIVATE ${Boost_LIBRARIES})

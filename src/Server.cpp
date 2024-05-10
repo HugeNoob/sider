@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <boost/program_options.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -16,27 +17,40 @@
 #include <unordered_map>
 #include <vector>
 
+#include "commands.h"
 #include "parser_utils.h"
 
-using TimeStampedStringMap =
-    std::unordered_map<std::string,
-                       std::pair<std::string, std::optional<std::chrono::time_point<std::chrono::system_clock>>>>;
+namespace po = boost::program_options;
 
 void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStringMap &store);
-void ping_command(int index, std::vector<int> &client_sockets);
-void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets);
-void set_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 TimeStampedStringMap &store);
-void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 TimeStampedStringMap &store);
-void info_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                  TimeStampedStringMap &store);
+
+struct CommandLineOptions {
+    int port;
+    std::vector<int> replicaOf;
+
+    static CommandLineOptions parse(int argc, char **argv) {
+        CommandLineOptions options;
+
+        po::options_description desc("Allowed options");
+        desc.add_options()("port", po::value<int>(&options.port)->default_value(6379), "port number")(
+            "replicaof", po::value<std::vector<int>>(&options.replicaOf)->multitoken(), "replica of <host> <port>");
+
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+
+        try {
+            po::notify(vm);
+        } catch (const std::exception &e) {
+            std::cerr << "Error parsing command line options: " << e.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        return options;
+    }
+};
 
 int main(int argc, char **argv) {
-    int port = 6379;  // default port
-    if (argc > 2 && std::string(argv[1]) == "--port") {
-        port = std::stoi(argv[2]);
-    }
+    CommandLineOptions options = CommandLineOptions::parse(argc, argv);
 
     // You can use print statements as follows for debugging, they'll be visible
     // when running tests.
@@ -60,7 +74,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(port);
+    server_addr.sin_port = htons(options.port);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
         std::cerr << "Failed to bind to port 6379\n";
@@ -160,58 +174,4 @@ void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStrin
         std::cout << "Handling else case\n";
         ping_command(index, client_sockets);
     }
-}
-
-void ping_command(int index, std::vector<int> &client_sockets) {
-    std::string val = "PONG";
-    std::string message = encode_simple_string(val);
-    send(client_sockets[index], message.c_str(), message.size(), 0);
-}
-
-void echo_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets) {
-    std::vector<std::string> echo_words(words.begin() + 1, words.end());
-    std::string echo_string = encode_array(echo_words);
-    send(client_sockets[index], echo_string.c_str(), echo_string.size(), 0);
-}
-
-void set_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 TimeStampedStringMap &store) {
-    std::string val = "OK";
-    std::string message = encode_simple_string(val);
-
-    std::optional<std::chrono::time_point<std::chrono::system_clock>> end_time;
-    if (words.size() > 3) {
-        end_time = std::chrono::system_clock::now() + std::chrono::milliseconds(stoi(words.back()));
-    } else {
-        end_time = std::nullopt;
-    }
-
-    store[words[1]] = {words[2], end_time};
-    send(client_sockets[index], message.c_str(), message.size(), 0);
-}
-
-void get_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                 TimeStampedStringMap &store) {
-    std::string message;
-    if (store.find(words[1]) == store.end()) {
-        message = null_bulk_string;
-    } else {
-        bool expired =
-            store[words[1]].second.has_value() && std::chrono::system_clock::now() >= store[words[1]].second.value();
-
-        if (expired) {
-            store.erase(store.find(words[1]));
-            message = null_bulk_string;
-        } else {
-            message = encode_bulk_string(store[words[1]].first);
-        }
-    }
-    send(client_sockets[index], message.c_str(), message.size(), 0);
-}
-
-void info_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                  TimeStampedStringMap &store) {
-    std::string val = "role:master";
-    std::string message = encode_bulk_string(val);
-    send(client_sockets[index], message.c_str(), message.size(), 0);
 }
