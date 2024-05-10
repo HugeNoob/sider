@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <vector>
@@ -57,9 +58,8 @@ void get_command(std::vector<std::string> words, int index, std::vector<int> &cl
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }
 
-void info_command(std::vector<std::string> words, int index, std::vector<int> &client_sockets,
-                  TimeStampedStringMap &store) {
-    std::string val = "role:master";
+void info_command(CommandLineOptions options, int index, std::vector<int> &client_sockets) {
+    std::string val = options.replicaOf.size() == 0 ? "role:master" : "role:slave";
     std::string message = encode_bulk_string(val);
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }

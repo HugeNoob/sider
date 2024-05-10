@@ -19,45 +19,8 @@
 #include "commands.h"
 #include "parser_utils.h"
 
-void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStringMap &store);
-
-struct CommandLineOptions {
-    int port;
-    std::vector<int> replicaOf;
-
-    static CommandLineOptions parse(int argc, char **argv) {
-        CommandLineOptions options;
-        int c;
-
-        // Default port
-        options.port = 6379;
-
-        for (int i = 1; i < argc; i++) {
-            std::string arg = argv[i];
-            if (arg == "--port") {
-                if (i + 1 < argc) {
-                    options.port = std::stoi(argv[++i]);
-                } else {
-                    std::cerr << "Error: --port requires an argument.\n";
-                    exit(1);
-                }
-            } else if (arg == "--replicaof") {
-                i++;
-                while (i < argc) {
-                    if (argv[i][0] == '-') {
-                        i--;
-                        break;
-                    }
-                    options.replicaOf.push_back(std::stoi(argv[i++]));
-                }
-            } else {
-                std::cerr << "Error: Unknown option '" << arg << "'.\n";
-                exit(1);
-            }
-        }
-        return options;
-    }
-};
+void handle_client(int index, std::vector<int> &client_sockets, CommandLineOptions &options,
+                   TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
     CommandLineOptions options = CommandLineOptions::parse(argc, argv);
@@ -128,7 +91,7 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, store);
+            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, options, store);
         }
 
         // Clear clients who errored / closed during handling
@@ -139,7 +102,8 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStringMap &store) {
+void handle_client(int index, std::vector<int> &client_sockets, CommandLineOptions &options,
+                   TimeStampedStringMap &store) {
     char buffer[1024] = {};
     int client_socket = client_sockets[index];
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
@@ -179,7 +143,7 @@ void handle_client(int index, std::vector<int> &client_sockets, TimeStampedStrin
         get_command(words, index, client_sockets, store);
     } else if (command == "INFO") {
         std::cout << "Handling case 5 INFO\n";
-        info_command(words, index, client_sockets, store);
+        info_command(options, index, client_sockets);
     } else {
         std::cout << "Handling else case\n";
         ping_command(index, client_sockets);
