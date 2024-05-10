@@ -58,8 +58,11 @@ void get_command(std::vector<std::string> words, int index, std::vector<int> &cl
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }
 
-void info_command(CommandLineOptions options, int index, std::vector<int> &client_sockets) {
-    std::string val = options.replicaOf.size() == 0 ? "role:master" : "role:slave";
-    std::string message = encode_bulk_string(val);
+void info_command(ServerInfo info, int index, std::vector<int> &client_sockets) {
+    std::string role = info.replica_of.size() == 0 ? "role:master" : "role:slave";
+    std::string replid = "master_replid:" + std::to_string(info.master_repl_offset);
+    std::string offset = "master_repl_offset:" + std::to_string(info.master_repl_offset);
+    std::string temp_message = role + "\n" + replid + "\n" + offset + "\n";
+    std::string message = encode_bulk_string(temp_message);
     send(client_sockets[index], message.c_str(), message.size(), 0);
 }

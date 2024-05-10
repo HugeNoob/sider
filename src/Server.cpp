@@ -19,11 +19,10 @@
 #include "commands.h"
 #include "parser_utils.h"
 
-void handle_client(int index, std::vector<int> &client_sockets, CommandLineOptions &options,
-                   TimeStampedStringMap &store);
+void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &options, TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
-    CommandLineOptions options = CommandLineOptions::parse(argc, argv);
+    ServerInfo options = ServerInfo::parse(argc, argv);
 
     // You can use print statements as follows for debugging, they'll be visible
     // when running tests.
@@ -102,8 +101,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void handle_client(int index, std::vector<int> &client_sockets, CommandLineOptions &options,
-                   TimeStampedStringMap &store) {
+void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &options, TimeStampedStringMap &store) {
     char buffer[1024] = {};
     int client_socket = client_sockets[index];
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
