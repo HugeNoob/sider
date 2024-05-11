@@ -18,8 +18,12 @@ void ping_command(int client_socket) {
 }
 
 void echo_command(std::vector<std::string> words, int client_socket) {
-    std::vector<std::string> echo_words(words.begin() + 1, words.end());
-    std::string echo_string = encode_array(echo_words);
+    std::string message;
+    message.reserve(words.size() - 1);
+    for (int i = 1; i < words.size(); i++) {
+        message += words[i];
+    }
+    std::string echo_string = encode_bulk_string(message);
     send(client_socket, echo_string.c_str(), echo_string.size(), 0);
 }
 
