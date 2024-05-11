@@ -68,3 +68,9 @@ void info_command(ServerInfo info, int client_socket) {
     std::string message = encode_bulk_string(temp_message);
     send(client_socket, message.c_str(), message.size(), 0);
 }
+
+void replconf_command(int client_socket) {
+    std::string temp_message = "OK";
+    std::string message = encode_simple_string(temp_message);
+    send(client_socket, message.c_str(), message.size(), 0);
+}

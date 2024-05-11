@@ -151,6 +151,9 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     } else if (command == "INFO") {
         std::cout << "Handling case 5 INFO\n";
         info_command(server_info, client_socket);
+    } else if (command == "REPLCONF") {
+        std::cout << "Handling case 6 REPLCONF\n";
+        replconf_command(client_socket);
     } else {
         std::cout << "Handling else case\n";
         ping_command(client_socket);

@@ -24,4 +24,6 @@ void get_command(std::vector<std::string> words, int client_socket, TimeStampedS
 
 void info_command(ServerInfo options, int client_socket);
 
+void replconf_command(int client_socket);
+
 #endif
