@@ -207,7 +207,7 @@ int handshake_master(ServerInfo &server_info) {
     memset(buffer, 0, sizeof(buffer));
     recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
     if (recv_bytes < 0) {
-        std::cout << "Error receiving bytes while pinging master\n";
+        std::cout << "Error receiving bytes while handshaking master at 2b\n";
         close(master_fd);
         return 1;
     }
@@ -224,7 +224,24 @@ int handshake_master(ServerInfo &server_info) {
     memset(buffer, 0, sizeof(buffer));
     recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
     if (recv_bytes < 0) {
-        std::cout << "Error receiving bytes while pinging master\n";
+        std::cout << "Error receiving bytes while handshaking master at 2d\n";
+        close(master_fd);
+        return 1;
+    }
+
+    // Handshake 3a: PSYNC to master
+    arr = {"PSYNC", "?", "-1"};
+    message = encode_array(arr);
+    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+        std::cerr << "Failed to send PSYNC: " << message << '\n';
+        return 1;
+    }
+
+    // Handshake 3b: Master sends OK
+    memset(buffer, 0, sizeof(buffer));
+    recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
+    if (recv_bytes < 0) {
+        std::cout << "Error receiving bytes while handshaking master at 3b\n";
         close(master_fd);
         return 1;
     }
