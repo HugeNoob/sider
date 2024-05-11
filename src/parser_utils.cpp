@@ -49,19 +49,10 @@ std::string encode_bulk_string(std::string &message) {
 
 std::string encode_array(std::vector<std::string> &words) {
     std::string res = "";
-    if (words.size() > 1) {
-        res += "*" + std::to_string(words.size()) + "\r\n";
-    }
-
-    std::cout << "Serialize: ";
-    for (std::string x : words) std::cout << x << ' ';
-    std::cout << std::endl;
-
+    res += "*" + std::to_string(words.size()) + "\r\n";
     for (std::string word : words) {
         res += "$" + std::to_string(word.size()) + "\r\n" + word + "\r\n";
     }
-
-    std::cout << res << std::endl;
     return res;
 }
 

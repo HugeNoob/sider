@@ -22,7 +22,7 @@
 void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &options, TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
-    ServerInfo serverInfo = ServerInfo::parse(argc, argv);
+    ServerInfo server_info = ServerInfo::parse(argc, argv);
 
     // You can use print statements as follows for debugging, they'll be visible
     // when running tests.
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(serverInfo.port);
+    server_addr.sin_port = htons(server_info.port);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
         std::cerr << "Failed to bind to port 6379\n";
@@ -57,6 +57,34 @@ int main(int argc, char **argv) {
     if (listen(server_fd, connection_backlog) != 0) {
         std::cerr << "listen failed\n";
         return 1;
+    }
+
+    // Connect to master if we are slave
+    if (server_info.replica_of.size() > 0) {
+        std::string master_host = server_info.replica_of[0];
+        if (master_host == "localhost") master_host = "127.0.0.1";
+        std::string master_port = server_info.replica_of[1];
+        int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (master_fd == -1) {
+            std::cerr << "Failed to create master server socket\n";
+            return 1;
+        }
+
+        struct sockaddr_in master_addr;
+        master_addr.sin_family = AF_INET;
+        master_addr.sin_addr.s_addr = inet_addr(master_host.c_str());
+        master_addr.sin_port = htons(stoi(master_port));
+        if (connect(master_fd, (struct sockaddr *)&master_addr, sizeof(master_addr)) != 0) {
+            std::cerr << "Failed to connect to master port " << master_host << ':' << master_port << '\n';
+            return 1;
+        }
+
+        std::vector<std::string> arr = {"ping"};
+        std::string message = encode_array(arr);
+        if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+            std::cerr << "Failed to ping master\n";
+            return 1;
+        }
     }
 
     TimeStampedStringMap store;
@@ -90,7 +118,7 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, serverInfo, store);
+            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, server_info, store);
         }
 
         // Clear clients who errored / closed during handling
