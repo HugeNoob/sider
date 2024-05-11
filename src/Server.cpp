@@ -20,6 +20,7 @@
 #include "parser_utils.h"
 
 int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringMap &store);
+int handshake_master(ServerInfo &server_info);
 
 int main(int argc, char **argv) {
     ServerInfo server_info = ServerInfo::parse(argc, argv);
@@ -63,58 +64,8 @@ int main(int argc, char **argv) {
 
     // Connect to master if we are slave
     if (server_info.replica_of.size() > 0) {
-        std::string master_host = server_info.replica_of[0];
-        if (master_host == "localhost") master_host = "127.0.0.1";
-        std::string master_port = server_info.replica_of[1];
-        int master_fd = socket(AF_INET, SOCK_STREAM, 0);
-        if (master_fd == -1) {
-            std::cerr << "Failed to create master server socket\n";
-            return 1;
-        }
-
-        struct sockaddr_in master_addr;
-        master_addr.sin_family = AF_INET;
-        master_addr.sin_addr.s_addr = inet_addr(master_host.c_str());
-        master_addr.sin_port = htons(stoi(master_port));
-        if (connect(master_fd, (struct sockaddr *)&master_addr, sizeof(master_addr)) != 0) {
-            std::cerr << "Failed to connect to master port " << master_host << ':' << master_port << '\n';
-            return 1;
-        }
-
-        std::vector<std::string> arr = {"ping"};
-        std::string message = encode_array(arr);
-        if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
-            std::cerr << "Failed to ping master\n";
-            return 1;
-        }
-
-        char buffer[1024] = {};
-        int recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
-        if (recv_bytes < 0) {
-            std::cout << "Error receiving bytes while pinging master\n";
-            close(master_fd);
-            return 1;
-        }
-
-        arr = {"REPLCONF", "listening-port", std::to_string(server_info.port)};
-        message = encode_array(arr);
-        if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
-            std::cerr << "Failed to send REPLCONF 1: " << message << '\n';
-            return 1;
-        }
-
-        memset(buffer, 0, sizeof(buffer));
-        recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
-        if (recv_bytes < 0) {
-            std::cout << "Error receiving bytes while pinging master\n";
-            close(master_fd);
-            return 1;
-        }
-
-        arr = {"REPLCONF", "capa", "psync2"};
-        message = encode_array(arr);
-        if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
-            std::cerr << "Failed to send REPLCONF 2: " << message << '\n';
+        if (handshake_master(server_info) != 0) {
+            std::cerr << "Error handshaking master as slave\n";
             return 1;
         }
     }
@@ -203,6 +154,79 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     } else {
         std::cout << "Handling else case\n";
         ping_command(client_socket);
+    }
+
+    return 0;
+}
+
+int handshake_master(ServerInfo &server_info) {
+    // Handshake 1a: PING master
+    std::string master_host = server_info.replica_of[0];
+    if (master_host == "localhost") master_host = "127.0.0.1";
+    std::string master_port = server_info.replica_of[1];
+    int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (master_fd == -1) {
+        std::cerr << "Failed to create master server socket\n";
+        return 1;
+    }
+
+    struct sockaddr_in master_addr;
+    master_addr.sin_family = AF_INET;
+    master_addr.sin_addr.s_addr = inet_addr(master_host.c_str());
+    master_addr.sin_port = htons(stoi(master_port));
+    if (connect(master_fd, (struct sockaddr *)&master_addr, sizeof(master_addr)) != 0) {
+        std::cerr << "Failed to connect to master port " << master_host << ':' << master_port << '\n';
+        return 1;
+    }
+
+    std::vector<std::string> arr = {"ping"};
+    std::string message = encode_array(arr);
+    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+        std::cerr << "Failed to ping master\n";
+        return 1;
+    }
+
+    // Handshake 1b: Master sends OK
+    char buffer[1024] = {};
+    int recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
+    if (recv_bytes < 0) {
+        std::cout << "Error receiving bytes while pinging master\n";
+        close(master_fd);
+        return 1;
+    }
+
+    // Handshake 2a: REPLCONF to master
+    arr = {"REPLCONF", "listening-port", std::to_string(server_info.port)};
+    message = encode_array(arr);
+    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+        std::cerr << "Failed to send REPLCONF 1: " << message << '\n';
+        return 1;
+    }
+
+    // Handshake 2b: Master sends OK
+    memset(buffer, 0, sizeof(buffer));
+    recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
+    if (recv_bytes < 0) {
+        std::cout << "Error receiving bytes while pinging master\n";
+        close(master_fd);
+        return 1;
+    }
+
+    // Handshake 2c: REPLCONF 2 to master
+    arr = {"REPLCONF", "capa", "psync2"};
+    message = encode_array(arr);
+    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+        std::cerr << "Failed to send REPLCONF 2: " << message << '\n';
+        return 1;
+    }
+
+    // Handshake 2d: Master sends OK
+    memset(buffer, 0, sizeof(buffer));
+    recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
+    if (recv_bytes < 0) {
+        std::cout << "Error receiving bytes while pinging master\n";
+        close(master_fd);
+        return 1;
     }
 
     return 0;
