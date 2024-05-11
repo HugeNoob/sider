@@ -19,7 +19,7 @@
 #include "commands.h"
 #include "parser_utils.h"
 
-void handle_client(int client_socket, ServerInfo &options, TimeStampedStringMap &store);
+int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
     ServerInfo server_info = ServerInfo::parse(argc, argv);
@@ -58,6 +58,8 @@ int main(int argc, char **argv) {
         std::cerr << "listen failed\n";
         return 1;
     }
+
+    TimeStampedStringMap store;
 
     // Connect to master if we are slave
     if (server_info.replica_of.size() > 0) {
@@ -117,8 +119,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    TimeStampedStringMap store;
-
     // Event Loop to handle clients
     std::cout << "Waiting for a client to connect...\n";
     std::vector<int> client_sockets;
@@ -148,7 +148,12 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) handle_client(client_sockets[i - 1], server_info, store);
+            if (fds[i].revents & POLLIN) {
+                // i - 1 since i here includes server_fd, which is not in client_sockets[]
+                if (handle_client(client_sockets[i - 1], server_info, store) != 0) {
+                    close(client_sockets[i - 1]);
+                }
+            }
         }
 
         // Clear clients who errored / closed during handling
@@ -159,18 +164,16 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void handle_client(int client_socket, ServerInfo &options, TimeStampedStringMap &store) {
+int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringMap &store) {
     char buffer[1024] = {};
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 
     if (recv_bytes < 0) {
         std::cout << "Error receiving bytes\n";
-        close(client_socket);
-        return;
+        return 1;
     } else if (recv_bytes == 0) {
         std::cout << "Client disconnected\n";
-        close(client_socket);
-        return;
+        return 1;
     }
 
     std::string msg(buffer);
@@ -196,9 +199,11 @@ void handle_client(int client_socket, ServerInfo &options, TimeStampedStringMap 
         get_command(words, client_socket, store);
     } else if (command == "INFO") {
         std::cout << "Handling case 5 INFO\n";
-        info_command(options, client_socket);
+        info_command(server_info, client_socket);
     } else {
         std::cout << "Handling else case\n";
         ping_command(client_socket);
     }
+
+    return 0;
 }
