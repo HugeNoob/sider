@@ -22,7 +22,7 @@
 void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &options, TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
-    ServerInfo options = ServerInfo::parse(argc, argv);
+    ServerInfo serverInfo = ServerInfo::parse(argc, argv);
 
     // You can use print statements as follows for debugging, they'll be visible
     // when running tests.
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(options.port);
+    server_addr.sin_port = htons(serverInfo.port);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
         std::cerr << "Failed to bind to port 6379\n";
@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, options, store);
+            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, serverInfo, store);
         }
 
         // Clear clients who errored / closed during handling
@@ -129,21 +129,21 @@ void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &opti
     std::transform(command.begin(), command.end(), command.begin(), toupper);
     if (command == "PING") {
         std::cout << "Handling case 1 PING\n";
-        ping_command(index, client_sockets);
+        ping_command(client_sockets[index]);
     } else if (command == "ECHO") {
         std::cout << "Handling case 2 ECHO\n";
-        echo_command(words, index, client_sockets);
+        echo_command(words, client_sockets[index]);
     } else if (command == "SET") {
         std::cout << "Handling case 3 SET\n";
-        set_command(words, index, client_sockets, store);
+        set_command(words, client_sockets[index], store);
     } else if (command == "GET") {
         std::cout << "Handling case 4 GET\n";
-        get_command(words, index, client_sockets, store);
+        get_command(words, client_sockets[index], store);
     } else if (command == "INFO") {
         std::cout << "Handling case 5 INFO\n";
-        info_command(options, index, client_sockets);
+        info_command(options, client_sockets[index]);
     } else {
         std::cout << "Handling else case\n";
-        ping_command(index, client_sockets);
+        ping_command(client_sockets[index]);
     }
 }
