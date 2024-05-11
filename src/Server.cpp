@@ -19,7 +19,7 @@
 #include "commands.h"
 #include "parser_utils.h"
 
-void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &options, TimeStampedStringMap &store);
+void handle_client(int client_socket, ServerInfo &options, TimeStampedStringMap &store);
 
 int main(int argc, char **argv) {
     ServerInfo server_info = ServerInfo::parse(argc, argv);
@@ -85,6 +85,36 @@ int main(int argc, char **argv) {
             std::cerr << "Failed to ping master\n";
             return 1;
         }
+
+        char buffer[1024] = {};
+        int recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
+        if (recv_bytes < 0) {
+            std::cout << "Error receiving bytes while pinging master\n";
+            close(master_fd);
+            return 1;
+        }
+
+        arr = {"REPLCONF", "listening-port", std::to_string(server_info.port)};
+        message = encode_array(arr);
+        if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+            std::cerr << "Failed to send REPLCONF 1: " << message << '\n';
+            return 1;
+        }
+
+        memset(buffer, 0, sizeof(buffer));
+        recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
+        if (recv_bytes < 0) {
+            std::cout << "Error receiving bytes while pinging master\n";
+            close(master_fd);
+            return 1;
+        }
+
+        arr = {"REPLCONF", "capa", "psync2"};
+        message = encode_array(arr);
+        if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
+            std::cerr << "Failed to send REPLCONF 2: " << message << '\n';
+            return 1;
+        }
     }
 
     TimeStampedStringMap store;
@@ -118,7 +148,7 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) handle_client(i - 1, client_sockets, server_info, store);
+            if (fds[i].revents & POLLIN) handle_client(client_sockets[i - 1], server_info, store);
         }
 
         // Clear clients who errored / closed during handling
@@ -129,20 +159,17 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &options, TimeStampedStringMap &store) {
+void handle_client(int client_socket, ServerInfo &options, TimeStampedStringMap &store) {
     char buffer[1024] = {};
-    int client_socket = client_sockets[index];
     int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 
     if (recv_bytes < 0) {
         std::cout << "Error receiving bytes\n";
         close(client_socket);
-        client_sockets[index] = -1;
         return;
     } else if (recv_bytes == 0) {
         std::cout << "Client disconnected\n";
         close(client_socket);
-        client_sockets[index] = -1;
         return;
     }
 
@@ -157,21 +184,21 @@ void handle_client(int index, std::vector<int> &client_sockets, ServerInfo &opti
     std::transform(command.begin(), command.end(), command.begin(), toupper);
     if (command == "PING") {
         std::cout << "Handling case 1 PING\n";
-        ping_command(client_sockets[index]);
+        ping_command(client_socket);
     } else if (command == "ECHO") {
         std::cout << "Handling case 2 ECHO\n";
-        echo_command(words, client_sockets[index]);
+        echo_command(words, client_socket);
     } else if (command == "SET") {
         std::cout << "Handling case 3 SET\n";
-        set_command(words, client_sockets[index], store);
+        set_command(words, client_socket, store);
     } else if (command == "GET") {
         std::cout << "Handling case 4 GET\n";
-        get_command(words, client_sockets[index], store);
+        get_command(words, client_socket, store);
     } else if (command == "INFO") {
         std::cout << "Handling case 5 INFO\n";
-        info_command(options, client_sockets[index]);
+        info_command(options, client_socket);
     } else {
         std::cout << "Handling else case\n";
-        ping_command(client_sockets[index]);
+        ping_command(client_socket);
     }
 }
