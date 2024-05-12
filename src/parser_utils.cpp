@@ -56,6 +56,19 @@ std::string encode_array(std::vector<std::string> &words) {
     return res;
 }
 
+std::string encode_rdb_file(std::string &message) {
+    return "$" + std::to_string(message.size()) + "\r\n" + message;
+}
+
+std::string hexToBytes(const std::string &s) {
+    std::string res;
+    for (size_t i = 0; i < s.size(); i += 2) {
+        unsigned int byte = std::stoi(s.substr(i, 2), nullptr, 16);
+        res.push_back(byte);
+    }
+    return res;
+}
+
 std::vector<std::string> split(std::string &s, std::string &delimiter) {
     std::vector<std::string> res;
     size_t pos = 0;

@@ -82,4 +82,11 @@ void psync_command(std::vector<std::string> words, ServerInfo server_info, int c
         "FULLRESYNC " + server_info.master_replid + " " + std::to_string(server_info.master_repl_offset);
     std::string message = encode_simple_string(temp_message);
     send(client_socket, message.c_str(), message.size(), 0);
+
+    std::string empty_rdb_hardcoded =
+        "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa0875"
+        "7365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
+    std::string rdb_bytes = hexToBytes(empty_rdb_hardcoded);
+    message = encode_rdb_file(rdb_bytes);
+    send(client_socket, message.c_str(), message.size(), 0);
 }

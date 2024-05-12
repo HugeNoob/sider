@@ -243,7 +243,7 @@ int handshake_master(ServerInfo &server_info) {
         return 1;
     }
 
-    // Handshake 3b: Master sends OK
+    // Handshake 3b: Master sends FULLRESYNC
     memset(buffer, 0, sizeof(buffer));
     recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
     if (recv_bytes < 0) {

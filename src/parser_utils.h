@@ -20,7 +20,11 @@ std::string encode_bulk_string(std::string &message);
 
 std::string encode_array(std::vector<std::string> &words);
 
+std::string encode_rdb_file(std::string &message);
+
 std::vector<std::string> split(std::string &s, std::string &delimiter);
+
+std::string hexToBytes(const std::string &s);
 
 std::string write_string(std::string const &s);
 
