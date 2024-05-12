@@ -7,7 +7,7 @@
 
 const std::string null_bulk_string = "$-1\r\n";
 
-std::vector<std::string> parse_message(std::string &raw_message) {
+std::vector<std::string> parse_message(std::string const &raw_message) {
     std::vector<std::string> res;
     if (raw_message[0] == '+') {
         res = parse_simple_string(raw_message);
@@ -22,16 +22,14 @@ std::vector<std::string> parse_message(std::string &raw_message) {
     return res;
 }
 
-std::vector<std::string> parse_simple_string(std::string &raw_message) {
-    std::string delimiter = "\r\n";
+std::vector<std::string> parse_simple_string(std::string const &raw_message) {
     std::string message = raw_message.substr(1, raw_message.size() - 1);
-    std::vector<std::string> tokens = split(message, delimiter);
+    std::vector<std::string> tokens = split(message, "\r\n");
     return tokens;
 }
 
-std::vector<std::string> parse_array(std::string &raw_message) {
-    std::string delimiter = "\r\n";
-    std::vector<std::string> tokens = split(raw_message, delimiter);
+std::vector<std::string> parse_array(std::string const &raw_message) {
+    std::vector<std::string> tokens = split(raw_message, "\r\n");
     std::vector<std::string> res;
     for (int i = 2; i < tokens.size(); i += 2) {
         res.push_back(tokens[i]);
@@ -39,16 +37,16 @@ std::vector<std::string> parse_array(std::string &raw_message) {
     return res;
 }
 
-std::string encode_simple_string(std::string &message) {
+std::string encode_simple_string(std::string const &message) {
     return "+" + message + "\r\n";
 }
 
-std::string encode_bulk_string(std::string &message) {
+std::string encode_bulk_string(std::string const &message) {
     return "$" + std::to_string(message.size()) + "\r\n" + message + "\r\n";
 }
 
-std::string encode_array(std::vector<std::string> &words) {
-    std::string res = "";
+std::string encode_array(std::vector<std::string> const &words) {
+    std::string res;
     res += "*" + std::to_string(words.size()) + "\r\n";
     for (std::string word : words) {
         res += "$" + std::to_string(word.size()) + "\r\n" + word + "\r\n";
@@ -56,11 +54,11 @@ std::string encode_array(std::vector<std::string> &words) {
     return res;
 }
 
-std::string encode_rdb_file(std::string &message) {
+std::string encode_rdb_file(std::string const &message) {
     return "$" + std::to_string(message.size()) + "\r\n" + message;
 }
 
-std::string hexToBytes(const std::string &s) {
+std::string hexToBytes(std::string const &s) {
     std::string res;
     for (size_t i = 0; i < s.size(); i += 2) {
         unsigned int byte = std::stoi(s.substr(i, 2), nullptr, 16);
@@ -69,7 +67,7 @@ std::string hexToBytes(const std::string &s) {
     return res;
 }
 
-std::vector<std::string> split(std::string &s, std::string &delimiter) {
+std::vector<std::string> split(std::string s, std::string const &delimiter) {
     std::vector<std::string> res;
     size_t pos = 0;
     std::string token;

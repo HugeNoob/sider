@@ -12,14 +12,12 @@
 #include "parser_utils.h"
 
 void ping_command(int client_socket) {
-    std::string val = "PONG";
-    std::string message = encode_simple_string(val);
+    std::string message = encode_simple_string("PONG");
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
 void echo_command(std::vector<std::string> words, int client_socket) {
     std::string message;
-    message.reserve(words.size() - 1);
     for (int i = 1; i < words.size(); i++) {
         message += words[i];
     }
@@ -28,8 +26,7 @@ void echo_command(std::vector<std::string> words, int client_socket) {
 }
 
 void set_command(std::vector<std::string> words, int client_socket, TimeStampedStringMap &store) {
-    std::string val = "OK";
-    std::string message = encode_simple_string(val);
+    std::string message = encode_simple_string("OK");
 
     std::optional<std::chrono::time_point<std::chrono::system_clock>> end_time;
     if (words.size() > 3) {
@@ -70,8 +67,7 @@ void info_command(ServerInfo server_info, int client_socket) {
 }
 
 void replconf_command(int client_socket) {
-    std::string temp_message = "OK";
-    std::string message = encode_simple_string(temp_message);
+    std::string message = encode_simple_string("OK");
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
