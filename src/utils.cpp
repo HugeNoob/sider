@@ -34,19 +34,21 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
                 exit(1);
             }
         } else if (arg == "--replicaof") {
-            i++;
-            while (i < argc) {
-                if (argv[i][0] == '-') {
-                    i--;
-                    break;
-                }
-                info.replica_of.push_back(argv[i++]);
-            }
-            if (info.replica_of.size() < 2) {
-                std::cerr << "Error: --replicaof requires <MASTER_HOST> <MASTER_PORT>";
+            std::string replica_info;
+            if (i + 1 < argc) {
+                replica_info = argv[++i];
+            } else {
+                std::cerr << "Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"";
                 exit(1);
             }
 
+            int j = replica_info.find(' ');
+            if (j == std::string::npos) {
+                std::cerr << "Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"";
+                exit(1);
+            }
+            info.replica_of.push_back(replica_info.substr(0, j));
+            info.replica_of.push_back(replica_info.substr(j + 1, replica_info.size() - j - 1));
         } else {
             std::cerr << "Error: Unknown option '" << arg << "'.\n";
             exit(1);
