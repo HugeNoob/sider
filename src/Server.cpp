@@ -108,13 +108,20 @@ int main(int argc, char **argv) {
             if (master_exists && i == fds.size() - 1) {
                 // Not sure what happens if master errors. Not handled for now.
                 handle_client(server_info.master_fd, server_info, store);
+                close(server_info.master_fd);
+                server_info.master_fd = -1;
             } else if (fds[i].revents & POLLIN) {
                 // i - 1 since i here includes server_fd, which is not in client_sockets[]
                 if (handle_client(server_info.client_sockets[i - 1], server_info, store) != 0) {
                     close(server_info.client_sockets[i - 1]);
+                    server_info.client_sockets[i - 1] = -1;
                 }
             }
         }
+
+        server_info.client_sockets.erase(
+            std::remove(server_info.client_sockets.begin(), server_info.client_sockets.end(), -1),
+            server_info.client_sockets.end());
     }
 
     close(server_fd);
