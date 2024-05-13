@@ -140,6 +140,7 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     std::cout << '\n';
 
     std::vector<std::string> words = parse_message(msg);
+    std::cout << "words length: " << words.size() << std::endl;
     std::string command = words[0];
     std::transform(command.begin(), command.end(), command.begin(), toupper);
 
@@ -186,8 +187,7 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     } else if (command == "FULLRESYNC") {
         reply_ok(client_socket);
     } else {
-        std::cout << "Handling else case\n";
-        ping_command(client_socket);
+        std::cout << "Handling else case: Do nothing\n";
     }
 
     return 0;

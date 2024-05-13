@@ -13,6 +13,8 @@ std::vector<std::string> parse_message(std::string const &raw_message) {
         res = parse_simple_string(raw_message);
     } else if (raw_message[0] == '*') {
         res = parse_array(raw_message);
+    } else if (raw_message[0] == '$') {
+        res = parse_bulk_string(raw_message);
     }
 
     std::cout << "Parsed tokens: [";
@@ -25,6 +27,11 @@ std::vector<std::string> parse_message(std::string const &raw_message) {
 std::vector<std::string> parse_simple_string(std::string const &raw_message) {
     std::string message = raw_message.substr(1, raw_message.size() - 1);
     std::vector<std::string> tokens = split(message, "\r\n");
+    return tokens;
+}
+
+std::vector<std::string> parse_bulk_string(std::string const &raw_message) {
+    std::vector<std::string> tokens = split(raw_message, "\r\n");
     return tokens;
 }
 

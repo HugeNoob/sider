@@ -12,6 +12,8 @@ std::vector<std::string> parse_message(std::string const &raw_message);
 
 std::vector<std::string> parse_simple_string(std::string const &raw_message);
 
+std::vector<std::string> parse_bulk_string(std::string const &raw_message);
+
 std::vector<std::string> parse_array(std::string const &raw_message);
 
 std::string encode_simple_string(std::string const &message);
