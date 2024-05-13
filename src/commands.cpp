@@ -25,8 +25,12 @@ void echo_command(std::vector<std::string> words, int client_socket) {
     send(client_socket, echo_string.c_str(), echo_string.size(), 0);
 }
 
-void set_command(std::vector<std::string> words, int client_socket, TimeStampedStringMap &store) {
-    std::string message = encode_simple_string("OK");
+void set_command(std::vector<std::string> words, int client_socket, TimeStampedStringMap &store,
+                 ServerInfo &server_info) {
+    if (client_socket != server_info.master_fd) {
+        std::string message = encode_simple_string("OK");
+        send(client_socket, message.c_str(), message.size(), 0);
+    }
 
     std::optional<std::chrono::time_point<std::chrono::system_clock>> end_time;
     if (words.size() > 3) {
@@ -36,7 +40,6 @@ void set_command(std::vector<std::string> words, int client_socket, TimeStampedS
     }
 
     store[words[1]] = {words[2], end_time};
-    send(client_socket, message.c_str(), message.size(), 0);
 }
 
 void get_command(std::vector<std::string> words, int client_socket, TimeStampedStringMap &store) {
@@ -57,7 +60,7 @@ void get_command(std::vector<std::string> words, int client_socket, TimeStampedS
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
-void info_command(ServerInfo server_info, int client_socket) {
+void info_command(ServerInfo &server_info, int client_socket) {
     std::string role = server_info.replica_of.size() == 0 ? "role:master" : "role:slave";
     std::string replid = "master_replid:" + std::to_string(server_info.master_repl_offset);
     std::string offset = "master_repl_offset:" + std::to_string(server_info.master_repl_offset);
@@ -71,18 +74,22 @@ void replconf_command(int client_socket) {
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
-void psync_command(std::vector<std::string> words, ServerInfo server_info, int client_socket) {
-    for (auto x : words) std::cout << x << ' ';
-    std::cout << std::endl;
+void psync_command(std::vector<std::string> words, ServerInfo &server_info, int client_socket) {
     std::string temp_message =
         "FULLRESYNC " + server_info.master_replid + " " + std::to_string(server_info.master_repl_offset);
     std::string message = encode_simple_string(temp_message);
     send(client_socket, message.c_str(), message.size(), 0);
+    server_info.replica_connections.push_back(client_socket);
 
+    // Send over a copy of store to replica
     std::string empty_rdb_hardcoded =
         "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa0875"
         "7365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
     std::string rdb_bytes = hexToBytes(empty_rdb_hardcoded);
     message = encode_rdb_file(rdb_bytes);
     send(client_socket, message.c_str(), message.size(), 0);
+}
+
+void propagate_command(std::string const &command, int client_socket) {
+    send(client_socket, command.c_str(), command.size(), 0);
 }

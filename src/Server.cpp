@@ -72,12 +72,18 @@ int main(int argc, char **argv) {
 
     // Event Loop to handle clients
     std::cout << "Waiting for a client to connect...\n";
-    std::vector<int> client_sockets;
     while (true) {
+        // 0 for server_fd, 1 to n - 1 for clients, n for master (if any)
         std::vector<pollfd> fds;
         fds.push_back({server_fd, POLLIN, 0});
-        for (int client_socket : client_sockets) {
+        for (int client_socket : server_info.client_sockets) {
             fds.push_back({client_socket, POLLIN, 0});
+        }
+
+        bool master_exists = false;
+        if (server_info.master_fd != -1) {
+            fds.push_back({server_info.master_fd, POLLIN, 0});
+            master_exists = true;
         }
 
         int num_ready = poll(fds.data(), fds.size(), -1);
@@ -94,21 +100,21 @@ int main(int argc, char **argv) {
                 std::cerr << "Failed to accept connection\n";
                 exit(1);
             }
-            std::cout << "New connection accepted\n";
-            client_sockets.push_back(client_socket);
+            std::cout << "New connection accepted from " << client_socket << "\n";
+            server_info.client_sockets.push_back(client_socket);
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (fds[i].revents & POLLIN) {
+            if (master_exists && i == fds.size() - 1) {
+                // Not sure what happens if master errors. Not handled for now.
+                handle_client(server_info.master_fd, server_info, store);
+            } else if (fds[i].revents & POLLIN) {
                 // i - 1 since i here includes server_fd, which is not in client_sockets[]
-                if (handle_client(client_sockets[i - 1], server_info, store) != 0) {
-                    close(client_sockets[i - 1]);
+                if (handle_client(server_info.client_sockets[i - 1], server_info, store) != 0) {
+                    close(server_info.client_sockets[i - 1]);
                 }
             }
         }
-
-        // Clear clients who errored / closed during handling
-        client_sockets.erase(std::remove(client_sockets.begin(), client_sockets.end(), -1), client_sockets.end());
     }
 
     close(server_fd);
@@ -129,13 +135,16 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
 
     std::string msg(buffer);
     std::cout << "Bytes received: " << recv_bytes << '\n';
-    std::cout << "Message received: ";
+    std::cout << "Message received from " << client_socket << ": ";
     write_string(msg);
     std::cout << '\n';
 
     std::vector<std::string> words = parse_message(msg);
     std::string command = words[0];
     std::transform(command.begin(), command.end(), command.begin(), toupper);
+
+    // PING, ECHO, non-writes are handled by master
+    // SET, DEL, writes are propagated to slaves
     if (command == "PING") {
         std::cout << "Handling case 1 PING\n";
         ping_command(client_socket);
@@ -144,7 +153,14 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         echo_command(words, client_socket);
     } else if (command == "SET") {
         std::cout << "Handling case 3 SET\n";
-        set_command(words, client_socket, store);
+        if (server_info.replica_connections.size() > 0) {
+            for (int replica_fd : server_info.replica_connections) {
+                propagate_command(msg, replica_fd);
+            }
+            propagate_command("+OK\r\n", client_socket);
+        } else {
+            set_command(words, client_socket, store, server_info);
+        }
     } else if (command == "GET") {
         std::cout << "Handling case 4 GET\n";
         get_command(words, client_socket, store);
@@ -245,6 +261,7 @@ int handshake_master(ServerInfo &server_info) {
 
     // Handshake 3b: Master sends FULLRESYNC
     memset(buffer, 0, sizeof(buffer));
+
     recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
     if (recv_bytes < 0) {
         std::cout << "Error receiving bytes while handshaking master at 3b\n";
@@ -252,5 +269,6 @@ int handshake_master(ServerInfo &server_info) {
         return 1;
     }
 
+    server_info.master_fd = master_fd;
     return 0;
 }
