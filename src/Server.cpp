@@ -168,11 +168,23 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         std::cout << "Handling case 5 INFO\n";
         info_command(server_info, client_socket);
     } else if (command == "REPLCONF") {
+        // Master receives REPLCONF from replica, just reply OK
         std::cout << "Handling case 6 REPLCONF\n";
-        replconf_command(client_socket);
+        reply_ok(client_socket);
     } else if (command == "PSYNC") {
-        std::cout << "Handling case 7 PSYNC\n";
+        std::cout << "Handling case 7 master receives PSYNC\n";
         psync_command(words, server_info, client_socket);
+    } else if (command == "PONG" && server_info.replication_stage == 1) {
+        std::cout << "Handling case 8 handshake part 2.1: REPLCONF 1\n";
+        replconf_one_command(server_info, client_socket);
+    } else if (command == "OK" && server_info.replication_stage == 2) {
+        std::cout << "Handling case 9 handshake part 2.2: REPLCONF 2\n";
+        replconf_two_command(server_info, client_socket);
+    } else if (command == "OK" && server_info.replication_stage == 3) {
+        std::cout << "Handling case 10 handshake part 3: Replica sends PSYNC 1\n";
+        replica_psync_command(server_info, client_socket);
+    } else if (command == "FULLRESYNC") {
+        reply_ok(client_socket);
     } else {
         std::cout << "Handling else case\n";
         ping_command(client_socket);
@@ -208,67 +220,7 @@ int handshake_master(ServerInfo &server_info) {
         return 1;
     }
 
-    // Handshake 1b: Master sends OK
-    char buffer[1024] = {};
-    int recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
-    if (recv_bytes < 0) {
-        std::cout << "Error receiving bytes while pinging master\n";
-        close(master_fd);
-        return 1;
-    }
-
-    // Handshake 2a: REPLCONF to master
-    arr = {"REPLCONF", "listening-port", std::to_string(server_info.port)};
-    message = encode_array(arr);
-    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
-        std::cerr << "Failed to send REPLCONF 1: " << message << '\n';
-        return 1;
-    }
-
-    // Handshake 2b: Master sends OK
-    memset(buffer, 0, sizeof(buffer));
-    recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
-    if (recv_bytes < 0) {
-        std::cout << "Error receiving bytes while handshaking master at 2b\n";
-        close(master_fd);
-        return 1;
-    }
-
-    // Handshake 2c: REPLCONF 2 to master
-    arr = {"REPLCONF", "capa", "psync2"};
-    message = encode_array(arr);
-    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
-        std::cerr << "Failed to send REPLCONF 2: " << message << '\n';
-        return 1;
-    }
-
-    // Handshake 2d: Master sends OK
-    memset(buffer, 0, sizeof(buffer));
-    recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
-    if (recv_bytes < 0) {
-        std::cout << "Error receiving bytes while handshaking master at 2d\n";
-        close(master_fd);
-        return 1;
-    }
-
-    // Handshake 3a: PSYNC to master
-    arr = {"PSYNC", "?", "-1"};
-    message = encode_array(arr);
-    if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
-        std::cerr << "Failed to send PSYNC: " << message << '\n';
-        return 1;
-    }
-
-    // Handshake 3b: Master sends FULLRESYNC
-    memset(buffer, 0, sizeof(buffer));
-
-    recv_bytes = recv(master_fd, buffer, sizeof(buffer), 0);
-    if (recv_bytes < 0) {
-        std::cout << "Error receiving bytes while handshaking master at 3b\n";
-        close(master_fd);
-        return 1;
-    }
-
+    server_info.replication_stage++;
     server_info.master_fd = master_fd;
     return 0;
 }
