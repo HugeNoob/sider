@@ -151,7 +151,6 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     std::cout << '\n';
 
     std::vector<std::string> words = parse_message(msg);
-    std::cout << "words length: " << words.size() << std::endl;
     std::string command = words[0];
     std::transform(command.begin(), command.end(), command.begin(), toupper);
 
@@ -193,9 +192,13 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         std::cout << "Handling case 9 handshake part 2.2: REPLCONF 2\n";
         replconf_two_command(server_info, client_socket);
     } else if (command == "OK" && server_info.replication_stage == 3) {
-        std::cout << "Handling case 10 handshake part 3: Replica sends PSYNC 1\n";
+        std::cout << "Handling case 10 handshake part 3: Replica sends PSYNC\n";
         replica_psync_command(server_info, client_socket);
     } else if (command == "FULLRESYNC") {
+        std::cout << "Handling case 11 FULLRESYNC\n";
+        reply_ok(client_socket);
+    } else if (command == "COMMAND") {
+        std::cout << "Handling case 12 COMMAND\n";
         reply_ok(client_socket);
     } else {
         std::cout << "Handling else case: Do nothing\n";
