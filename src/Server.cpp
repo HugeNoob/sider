@@ -106,10 +106,10 @@ int main(int argc, char **argv) {
 
         for (size_t i = 1; i < fds.size(); i++) {
             if (master_exists && i == fds.size() - 1) {
-                // Not sure what happens if master errors. Not handled for now.
-                handle_client(server_info.master_fd, server_info, store);
-                close(server_info.master_fd);
-                server_info.master_fd = -1;
+                if (handle_client(server_info.master_fd, server_info, store) != 0) {
+                    close(server_info.master_fd);
+                    server_info.master_fd = -1;
+                }
             } else if (fds[i].revents & POLLIN) {
                 // i - 1 since i here includes server_fd, which is not in client_sockets[]
                 if (handle_client(server_info.client_sockets[i - 1], server_info, store) != 0) {
