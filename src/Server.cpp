@@ -164,14 +164,10 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         echo_command(words, client_socket);
     } else if (command == "SET") {
         std::cout << "Handling case 3 SET\n";
-        if (server_info.replica_connections.size() > 0) {
-            for (int replica_fd : server_info.replica_connections) {
-                propagate_command(msg, replica_fd);
-            }
-            propagate_command("+OK\r\n", client_socket);
-        } else {
-            set_command(words, client_socket, store, server_info);
+        for (int replica_fd : server_info.replica_connections) {
+            propagate_command(msg, replica_fd);
         }
+        set_command(words, client_socket, store, server_info);
     } else if (command == "GET") {
         std::cout << "Handling case 4 GET\n";
         get_command(words, client_socket, store);
