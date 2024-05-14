@@ -61,7 +61,7 @@ void get_command(std::vector<std::string> words, int client_socket, TimeStampedS
 }
 
 void info_command(ServerInfo &server_info, int client_socket) {
-    std::string role = server_info.replica_of.size() == 0 ? "role:master" : "role:slave";
+    std::string role = server_info.master_port == -1 ? "role:master" : "role:slave";
     std::string replid = "master_replid:" + std::to_string(server_info.master_repl_offset);
     std::string offset = "master_repl_offset:" + std::to_string(server_info.master_repl_offset);
     std::string temp_message = role + "\n" + replid + "\n" + offset + "\n";
@@ -97,7 +97,7 @@ void psync_command(std::vector<std::string> words, ServerInfo &server_info, int 
         "FULLRESYNC " + server_info.master_replid + " " + std::to_string(server_info.master_repl_offset);
     std::string message = encode_simple_string(temp_message);
     send(client_socket, message.c_str(), message.size(), 0);
-    server_info.replica_connections.push_back(client_socket);
+    server_info.replica_connections.insert(client_socket);
 
     // Send over a copy of store to replica
     std::string empty_rdb_hardcoded =

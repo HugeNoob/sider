@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     TimeStampedStringMap store;
 
     // Connect to master if we are slave
-    if (server_info.replica_of.size() > 0) {
+    if (server_info.master_port != -1) {
         if (handshake_master(server_info) != 0) {
             std::cerr << "Error handshaking master as slave\n";
             return 1;
@@ -73,10 +73,12 @@ int main(int argc, char **argv) {
     // Event Loop to handle clients
     std::cout << "Waiting for a client to connect...\n";
     while (true) {
+        std::vector<int> &client_sockets = server_info.client_sockets;
+
         // 0 for server_fd, 1 to n - 1 for clients, n for master (if any)
         std::vector<pollfd> fds;
         fds.push_back({server_fd, POLLIN, 0});
-        for (int client_socket : server_info.client_sockets) {
+        for (int client_socket : client_sockets) {
             fds.push_back({client_socket, POLLIN, 0});
         }
 
@@ -101,7 +103,7 @@ int main(int argc, char **argv) {
                 exit(1);
             }
             std::cout << "New connection accepted from " << client_socket << "\n";
-            server_info.client_sockets.push_back(client_socket);
+            client_sockets.push_back(client_socket);
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
@@ -112,16 +114,18 @@ int main(int argc, char **argv) {
                 }
             } else if (fds[i].revents & POLLIN) {
                 // i - 1 since i here includes server_fd, which is not in client_sockets[]
-                if (handle_client(server_info.client_sockets[i - 1], server_info, store) != 0) {
-                    close(server_info.client_sockets[i - 1]);
-                    server_info.client_sockets[i - 1] = -1;
+                if (handle_client(client_sockets[i - 1], server_info, store) != 0) {
+                    close(client_sockets[i - 1]);
+                    if (server_info.replica_connections.find(client_sockets[i - 1]) !=
+                        server_info.replica_connections.end()) {
+                        server_info.replica_connections.erase(client_sockets[i - 1]);
+                    }
+                    client_sockets[i - 1] = -1;
                 }
             }
         }
 
-        server_info.client_sockets.erase(
-            std::remove(server_info.client_sockets.begin(), server_info.client_sockets.end(), -1),
-            server_info.client_sockets.end());
+        client_sockets.erase(std::remove(client_sockets.begin(), client_sockets.end(), -1), client_sockets.end());
     }
 
     close(server_fd);
@@ -200,11 +204,16 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     return 0;
 }
 
+// Handshake steps:
+// Replica: PING, Expect master: PONG
+// Replica: REPLCONF listening-port <PORT>, Expect master: OK
+// Replica: REPLCONF capa psync 2, Expect master: OK
+// Replica: PSYNC ? -1, Expect master: FULLRESYNC <REPL_ID> 0
 int handshake_master(ServerInfo &server_info) {
     // Handshake 1a: PING master
-    std::string master_host = server_info.replica_of[0];
+    std::string master_host = server_info.master_host;
     if (master_host == "localhost") master_host = "127.0.0.1";
-    std::string master_port = server_info.replica_of[1];
+    int master_port = server_info.master_port;
     int master_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (master_fd == -1) {
         std::cerr << "Failed to create master server socket\n";
@@ -214,7 +223,7 @@ int handshake_master(ServerInfo &server_info) {
     struct sockaddr_in master_addr;
     master_addr.sin_family = AF_INET;
     master_addr.sin_addr.s_addr = inet_addr(master_host.c_str());
-    master_addr.sin_port = htons(stoi(master_port));
+    master_addr.sin_port = htons(master_port);
     if (connect(master_fd, (struct sockaddr *)&master_addr, sizeof(master_addr)) != 0) {
         std::cerr << "Failed to connect to master port " << master_host << ':' << master_port << '\n';
         return 1;
