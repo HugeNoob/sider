@@ -145,59 +145,60 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     }
 
     std::string msg(buffer);
-    std::cout << "Bytes received: " << recv_bytes << '\n';
-    std::cout << "Message received from " << client_socket << ": ";
+    std::cout << "I am port " << server_info.port << ". Message received from " << client_socket << ": ";
     write_string(msg);
     std::cout << '\n';
 
-    std::vector<std::string> words = parse_message(msg);
-    std::string command = words[0];
-    std::transform(command.begin(), command.end(), command.begin(), toupper);
+    std::vector<std::vector<std::string>> commands = parse_message(msg);
+    for (auto command : commands) {
+        std::string keyword = command[0];
+        std::transform(keyword.begin(), keyword.end(), keyword.begin(), toupper);
 
-    // PING, ECHO, non-writes are handled by master
-    // SET, DEL, writes are propagated to slaves
-    if (command == "PING") {
-        std::cout << "Handling case 1 PING\n";
-        ping_command(client_socket);
-    } else if (command == "ECHO") {
-        std::cout << "Handling case 2 ECHO\n";
-        echo_command(words, client_socket);
-    } else if (command == "SET") {
-        std::cout << "Handling case 3 SET\n";
-        for (int replica_fd : server_info.replica_connections) {
-            propagate_command(msg, replica_fd);
+        // PING, ECHO, non-writes are handled by master
+        // SET, DEL, writes are propagated to slaves
+        if (keyword == "PING") {
+            std::cout << "Handling case 1 PING\n";
+            ping_command(client_socket);
+        } else if (keyword == "ECHO") {
+            std::cout << "Handling case 2 ECHO\n";
+            echo_command(command, client_socket);
+        } else if (keyword == "SET") {
+            std::cout << "Handling case 3 SET\n";
+            for (int replica_fd : server_info.replica_connections) {
+                propagate_command(msg, replica_fd);
+            }
+            set_command(command, client_socket, store, server_info);
+        } else if (keyword == "GET") {
+            std::cout << "Handling case 4 GET\n";
+            get_command(command, client_socket, store);
+        } else if (keyword == "INFO") {
+            std::cout << "Handling case 5 INFO\n";
+            info_command(server_info, client_socket);
+        } else if (keyword == "REPLCONF") {
+            // Master receives REPLCONF from replica, just reply OK
+            std::cout << "Handling case 6 REPLCONF\n";
+            reply_ok(client_socket);
+        } else if (keyword == "PSYNC") {
+            std::cout << "Handling case 7 master receives PSYNC\n";
+            psync_command(command, server_info, client_socket);
+        } else if (keyword == "PONG" && server_info.replication_stage == 1) {
+            std::cout << "Handling case 8 handshake part 2.1: REPLCONF 1\n";
+            replconf_one_command(server_info, client_socket);
+        } else if (keyword == "OK" && server_info.replication_stage == 2) {
+            std::cout << "Handling case 9 handshake part 2.2: REPLCONF 2\n";
+            replconf_two_command(server_info, client_socket);
+        } else if (keyword == "OK" && server_info.replication_stage == 3) {
+            std::cout << "Handling case 10 handshake part 3: Replica sends PSYNC\n";
+            replica_psync_command(server_info, client_socket);
+        } else if (keyword == "FULLRESYNC") {
+            std::cout << "Handling case 11 FULLRESYNC\n";
+            reply_ok(client_socket);
+        } else if (keyword == "COMMAND") {
+            std::cout << "Handling case 12 COMMAND\n";
+            reply_ok(client_socket);
+        } else {
+            std::cout << "Handling else case: Do nothing\n";
         }
-        set_command(words, client_socket, store, server_info);
-    } else if (command == "GET") {
-        std::cout << "Handling case 4 GET\n";
-        get_command(words, client_socket, store);
-    } else if (command == "INFO") {
-        std::cout << "Handling case 5 INFO\n";
-        info_command(server_info, client_socket);
-    } else if (command == "REPLCONF") {
-        // Master receives REPLCONF from replica, just reply OK
-        std::cout << "Handling case 6 REPLCONF\n";
-        reply_ok(client_socket);
-    } else if (command == "PSYNC") {
-        std::cout << "Handling case 7 master receives PSYNC\n";
-        psync_command(words, server_info, client_socket);
-    } else if (command == "PONG" && server_info.replication_stage == 1) {
-        std::cout << "Handling case 8 handshake part 2.1: REPLCONF 1\n";
-        replconf_one_command(server_info, client_socket);
-    } else if (command == "OK" && server_info.replication_stage == 2) {
-        std::cout << "Handling case 9 handshake part 2.2: REPLCONF 2\n";
-        replconf_two_command(server_info, client_socket);
-    } else if (command == "OK" && server_info.replication_stage == 3) {
-        std::cout << "Handling case 10 handshake part 3: Replica sends PSYNC\n";
-        replica_psync_command(server_info, client_socket);
-    } else if (command == "FULLRESYNC") {
-        std::cout << "Handling case 11 FULLRESYNC\n";
-        reply_ok(client_socket);
-    } else if (command == "COMMAND") {
-        std::cout << "Handling case 12 COMMAND\n";
-        reply_ok(client_socket);
-    } else {
-        std::cout << "Handling else case: Do nothing\n";
     }
 
     return 0;

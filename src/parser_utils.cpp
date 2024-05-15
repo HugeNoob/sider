@@ -7,21 +7,68 @@
 
 const std::string null_bulk_string = "$-1\r\n";
 
-std::vector<std::string> parse_message(std::string const &raw_message) {
-    std::vector<std::string> res;
-    if (raw_message[0] == '+') {
-        res = parse_simple_string(raw_message);
-    } else if (raw_message[0] == '*') {
-        res = parse_array(raw_message);
-    } else if (raw_message[0] == '$') {
-        res = parse_bulk_string(raw_message);
+std::vector<std::vector<std::string>> parse_message(std::string const &raw_message) {
+    std::vector<std::vector<std::string>> commands;
+    int i = 0;
+    while (i < raw_message.size()) {
+        if (raw_message[i] == '+') {
+            // Simple strings: Start with +, terminated with \r\n
+            std::string simple_string;
+            while (i < raw_message.size()) {
+                simple_string.push_back(raw_message[i]);
+                if (raw_message.substr(i, 2) == "\r\n") {
+                    simple_string.push_back(raw_message[++i]);
+                    break;
+                }
+                i++;
+            }
+            commands.push_back(parse_simple_string(simple_string));
+        } else if (raw_message[i] == '$') {
+            // Bulk strings: $<length>\r\n<data>\r\n
+            std::string bulk_string;
+            int cnt = 0;
+            while (i < raw_message.size()) {
+                bulk_string.push_back(raw_message[i]);
+                if (raw_message.substr(i, 2) == "\r\n") {
+                    bulk_string.push_back(raw_message[++i]);
+                    if (++cnt == 2) break;
+                }
+                i++;
+            }
+            commands.push_back(parse_bulk_string(bulk_string));
+        } else if (raw_message[i] == '*') {
+            // Arrays: *<number-of-elements>\r\n<element-1>...<element-n>
+            std::string arr;
+            while (i < raw_message.size()) {
+                if (raw_message.substr(i, 2) == "\r\n") break;
+                arr.push_back(raw_message[i++]);
+            }
+            int num_elements = stoi(arr.substr(1, arr.size() - 1)) * 2;
+            arr.push_back(raw_message[i++]);
+            arr.push_back(raw_message[i++]);
+
+            // Get till num_element \r\n delimiters
+            while (i < raw_message.size() && num_elements) {
+                if (raw_message.substr(i, 2) == "\r\n") num_elements--;
+                arr.push_back(raw_message[i++]);
+            }
+            arr.push_back(raw_message[i]);
+            commands.push_back(parse_array(arr));
+        }
+        i++;
     }
 
-    std::cout << "Parsed tokens: [";
-    for (std::string s : res) std::cout << s << ", ";
-    std::cout << "]\n";
+    std::cout << "Parsed " << commands.size() << " commands" << std::endl;
+    for (int i = 0; i < commands.size(); i++) {
+        std::cout << "Command " << i << ", has size of " << commands[i].size() << ": ";
+        for (int j = 0; j < commands[i].size(); j++) {
+            write_string(commands[i][j]);
+            std::cout << ' ';
+        }
+        std::cout << std::endl;
+    }
 
-    return res;
+    return commands;
 }
 
 std::vector<std::string> parse_simple_string(std::string const &raw_message) {
