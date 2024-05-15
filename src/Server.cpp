@@ -184,15 +184,6 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         } else if (keyword == "PSYNC") {
             std::cout << "Handling case 7 master receives PSYNC\n";
             psync_command(command, server_info, client_socket);
-        } else if (keyword == "PONG" && server_info.replication_stage == 1) {
-            std::cout << "Handling case 8 handshake part 2.1: REPLCONF 1\n";
-            replconf_one_command(server_info, client_socket);
-        } else if (keyword == "OK" && server_info.replication_stage == 2) {
-            std::cout << "Handling case 9 handshake part 2.2: REPLCONF 2\n";
-            replconf_two_command(server_info, client_socket);
-        } else if (keyword == "OK" && server_info.replication_stage == 3) {
-            std::cout << "Handling case 10 handshake part 3: Replica sends PSYNC\n";
-            replica_psync_command(server_info, client_socket);
         } else if (keyword == "FULLRESYNC") {
             std::cout << "Handling case 11 FULLRESYNC\n";
             reply_ok(client_socket);
@@ -229,6 +220,7 @@ int handshake_master(ServerInfo &server_info) {
         std::cerr << "Failed to connect to master port " << master_host << ':' << master_port << '\n';
         return 1;
     }
+    server_info.master_fd = master_fd;
 
     std::vector<std::string> arr = {"ping"};
     std::string message = encode_array(arr);
@@ -237,7 +229,22 @@ int handshake_master(ServerInfo &server_info) {
         return 1;
     }
 
-    server_info.replication_stage++;
-    server_info.master_fd = master_fd;
+    std::cout << "before read" << std::endl;
+    char buf[1024] = {'\0'};
+    recv(master_fd, buf, sizeof(buf), 0);
+    memset(buf, 0, sizeof(buf));
+    replconf_one_command(server_info, master_fd);
+
+    recv(master_fd, buf, sizeof(buf), 0);
+    memset(buf, 0, sizeof(buf));
+    replconf_two_command(server_info, master_fd);
+
+    recv(master_fd, buf, sizeof(buf), 0);
+    memset(buf, 0, sizeof(buf));
+    replica_psync_command(server_info, master_fd);
+
+    recv(master_fd, buf, sizeof(buf), 0);
+    memset(buf, 0, sizeof(buf));
+
     return 0;
 }
