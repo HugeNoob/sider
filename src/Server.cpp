@@ -107,14 +107,15 @@ int main(int argc, char **argv) {
         }
 
         for (size_t i = 1; i < fds.size(); i++) {
-            if (master_exists && i == fds.size() - 1) {
-                if (handle_client(server_info.master_fd, server_info, store) != 0) {
-                    close(server_info.master_fd);
-                    server_info.master_fd = -1;
+            if (fds[i].revents & POLLIN) {
+                if (i == fds.size() - 1 && master_exists) {
+                    if (handle_client(server_info.master_fd, server_info, store) != 0) {
+                        close(server_info.master_fd);
+                        server_info.master_fd = -1;
+                    }
                 }
-            } else if (fds[i].revents & POLLIN) {
                 // i - 1 since i here includes server_fd, which is not in client_sockets[]
-                if (handle_client(client_sockets[i - 1], server_info, store) != 0) {
+                else if (handle_client(client_sockets[i - 1], server_info, store) != 0) {
                     close(client_sockets[i - 1]);
                     if (server_info.replica_connections.find(client_sockets[i - 1]) !=
                         server_info.replica_connections.end()) {
@@ -145,9 +146,11 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     }
 
     std::string msg(buffer);
-    std::cout << "I am port " << server_info.port << ". Message received from " << client_socket << ": ";
+    std::cout << "Port " << server_info.port << ", message received from " << client_socket << ": ";
     write_string(msg);
     std::cout << '\n';
+
+    if (msg == null_bulk_string) return 0;
 
     std::vector<std::vector<std::string>> commands = parse_message(msg);
     for (auto command : commands) {
@@ -193,11 +196,9 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         } else if (keyword == "FULLRESYNC") {
             std::cout << "Handling case 11 FULLRESYNC\n";
             reply_ok(client_socket);
-        } else if (keyword == "COMMAND") {
-            std::cout << "Handling case 12 COMMAND\n";
-            reply_ok(client_socket);
         } else {
             std::cout << "Handling else case: Do nothing\n";
+            reply_null(client_socket);
         }
     }
 

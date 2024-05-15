@@ -116,3 +116,7 @@ void reply_ok(int client_socket) {
     std::string message = encode_simple_string("OK");
     send(client_socket, message.c_str(), message.size(), 0);
 }
+
+void reply_null(int client_socket) {
+    send(client_socket, null_bulk_string.c_str(), null_bulk_string.size(), 0);
+}
