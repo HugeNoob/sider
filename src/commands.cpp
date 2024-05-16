@@ -69,27 +69,8 @@ void info_command(ServerInfo &server_info, int client_socket) {
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
-// First replconf from replica to master after receiving OK
-void replconf_one_command(ServerInfo &server_info, int client_socket) {
-    std::vector<std::string> arr = {"REPLCONF", "listening-port", std::to_string(server_info.port)};
-    std::string message = encode_array(arr);
-    send(server_info.master_fd, message.c_str(), message.size(), 0);
-    server_info.replication_stage++;
-}
-
-// Second replconf from replica to master after receiving OK
-void replconf_two_command(ServerInfo &server_info, int client_socket) {
-    std::vector<std::string> arr = {"REPLCONF", "capa", "psync2"};
-    std::string message = encode_array(arr);
-    send(client_socket, message.c_str(), message.size(), 0);
-    server_info.replication_stage++;
-}
-
-void replica_psync_command(ServerInfo &server_info, int client_socket) {
-    std::vector<std::string> arr = {"PSYNC", "?", "-1"};
-    std::string message = encode_array(arr);
-    send(client_socket, message.c_str(), message.size(), 0);
-    server_info.replication_stage++;
+void replconf_command_master(int client_socket) {
+    std::string message = encode_array({"REPLCONF", "GETACK", "*"});
 }
 
 void psync_command(std::vector<std::string> words, ServerInfo &server_info, int client_socket) {

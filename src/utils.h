@@ -19,7 +19,6 @@ struct ServerInfo {
     int master_repl_offset = 0;  // 0 is hardcoded arbitrarily for now
 
     std::unordered_set<int> replica_connections;  // fd of all slaves
-    int replication_stage = 0;
 
     static ServerInfo parse(int argc, char **argv);
 };

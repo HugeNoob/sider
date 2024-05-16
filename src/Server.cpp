@@ -178,7 +178,6 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
             std::cout << "Handling case 5 INFO\n";
             info_command(server_info, client_socket);
         } else if (keyword == "REPLCONF") {
-            // Master receives REPLCONF from replica, just reply OK
             std::cout << "Handling case 6 REPLCONF\n";
             reply_ok(client_socket);
         } else if (keyword == "PSYNC") {
@@ -229,19 +228,21 @@ int handshake_master(ServerInfo &server_info) {
         return 1;
     }
 
-    std::cout << "before read" << std::endl;
     char buf[1024] = {'\0'};
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));
-    replconf_one_command(server_info, master_fd);
+    std::string message = encode_array({"REPLCONF", "listening-port", std::to_string(server_info.port)});
+    send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));
-    replconf_two_command(server_info, master_fd);
+    std::string message = encode_array({"REPLCONF", "capa", "psync2"});
+    send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));
-    replica_psync_command(server_info, master_fd);
+    std::string message = encode_array({"PSYNC", "?", "-1"});
+    send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));

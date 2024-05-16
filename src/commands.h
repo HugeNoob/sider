@@ -25,13 +25,9 @@ void get_command(std::vector<std::string> words, int client_socket, TimeStampedS
 
 void info_command(ServerInfo &server_info, int client_socket);
 
-void replconf_one_command(ServerInfo &server_info, int client_socket);
-
-void replconf_two_command(ServerInfo &server_info, int client_socket);
-
-void replica_psync_command(ServerInfo &server_info, int client_socket);
-
 void psync_command(std::vector<std::string> words, ServerInfo &server_info, int client_socket);
+
+void replconf_command_master(int client_socket);
 
 void propagate_command(std::string const &command, int client_socket);
 
