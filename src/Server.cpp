@@ -155,6 +155,10 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     std::vector<std::vector<std::string>> commands = parse_message(msg);
     for (auto command : commands) {
         std::string keyword = command[0];
+
+        // Ignores RDB for now
+        if (keyword[0] == '$') continue;
+
         std::transform(keyword.begin(), keyword.end(), keyword.begin(), toupper);
 
         // PING, ECHO, non-writes are handled by master
@@ -179,7 +183,7 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
             info_command(server_info, client_socket);
         } else if (keyword == "REPLCONF") {
             std::cout << "Handling case 6 REPLCONF\n";
-            reply_ok(client_socket);
+            replconf_command(server_info, client_socket);
         } else if (keyword == "PSYNC") {
             std::cout << "Handling case 7 master receives PSYNC\n";
             psync_command(command, server_info, client_socket);
@@ -231,17 +235,17 @@ int handshake_master(ServerInfo &server_info) {
     char buf[1024] = {'\0'};
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));
-    std::string message = encode_array({"REPLCONF", "listening-port", std::to_string(server_info.port)});
+    message = encode_array({"REPLCONF", "listening-port", std::to_string(server_info.port)});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));
-    std::string message = encode_array({"REPLCONF", "capa", "psync2"});
+    message = encode_array({"REPLCONF", "capa", "psync2"});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));
-    std::string message = encode_array({"PSYNC", "?", "-1"});
+    message = encode_array({"PSYNC", "?", "-1"});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     recv(master_fd, buf, sizeof(buf), 0);

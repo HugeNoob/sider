@@ -69,8 +69,14 @@ void info_command(ServerInfo &server_info, int client_socket) {
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
-void replconf_command_master(int client_socket) {
-    std::string message = encode_array({"REPLCONF", "GETACK", "*"});
+void replconf_command(ServerInfo server_info, int client_socket) {
+    std::string message;
+    if (server_info.master_fd == -1) {
+        message = encode_simple_string("OK");
+    } else {
+        message = encode_array({"REPLCONF", "ACK", std::to_string(server_info.master_repl_offset)});
+    }
+    send(client_socket, message.c_str(), message.size(), 0);
 }
 
 void psync_command(std::vector<std::string> words, ServerInfo &server_info, int client_socket) {

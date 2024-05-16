@@ -27,7 +27,7 @@ void info_command(ServerInfo &server_info, int client_socket);
 
 void psync_command(std::vector<std::string> words, ServerInfo &server_info, int client_socket);
 
-void replconf_command_master(int client_socket);
+void replconf_command(ServerInfo server_info, int client_socket);
 
 void propagate_command(std::string const &command, int client_socket);
 
