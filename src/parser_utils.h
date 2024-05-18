@@ -8,7 +8,7 @@ extern const std::string null_bulk_string;
 
 std::string get_first_word(std::string const &input);
 
-std::vector<std::vector<std::string>> parse_message(std::string const &raw_message);
+std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string const &raw_message);
 
 std::vector<std::string> parse_simple_string(std::string const &raw_message);
 

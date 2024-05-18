@@ -7,10 +7,11 @@
 
 const std::string null_bulk_string = "$-1\r\n";
 
-std::vector<std::vector<std::string>> parse_message(std::string const &raw_message) {
-    std::vector<std::vector<std::string>> commands;
+std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string const &raw_message) {
+    std::vector<std::pair<std::vector<std::string>, int>> commands;
     int i = 0;
     while (i < raw_message.size()) {
+        int j = i;
         if (raw_message[i] == '+') {
             // Simple strings: Start with +, terminated with \r\n
             std::string simple_string;
@@ -22,7 +23,7 @@ std::vector<std::vector<std::string>> parse_message(std::string const &raw_messa
                 }
                 i++;
             }
-            commands.push_back(parse_simple_string(simple_string));
+            commands.push_back({parse_simple_string(simple_string), i - j + 1});
         } else if (raw_message[i] == '$') {
             // Bulk strings: $<length>\r\n<data>\r\n
             std::string bulk_string;
@@ -35,7 +36,7 @@ std::vector<std::vector<std::string>> parse_message(std::string const &raw_messa
                 }
                 i++;
             }
-            commands.push_back(parse_bulk_string(bulk_string));
+            commands.push_back({parse_bulk_string(bulk_string), i - j + 1});
         } else if (raw_message[i] == '*') {
             // Arrays: *<number-of-elements>\r\n<element-1>...<element-n>
             std::string arr;
@@ -53,16 +54,16 @@ std::vector<std::vector<std::string>> parse_message(std::string const &raw_messa
                 arr.push_back(raw_message[i++]);
             }
             arr.push_back(raw_message[i]);
-            commands.push_back(parse_array(arr));
+            commands.push_back({parse_array(arr), i - j + 1});
         }
         i++;
     }
 
     std::cout << "Parsed " << commands.size() << " commands" << std::endl;
     for (int i = 0; i < commands.size(); i++) {
-        std::cout << "Command " << i << ", has size of " << commands[i].size() << ": ";
-        for (int j = 0; j < commands[i].size(); j++) {
-            write_string(commands[i][j]);
+        std::cout << "Command " << i << ", has " << commands[i].second << " bytes: ";
+        for (int j = 0; j < commands[i].first.size(); j++) {
+            write_string(commands[i].first[j]);
             std::cout << ' ';
         }
         std::cout << std::endl;

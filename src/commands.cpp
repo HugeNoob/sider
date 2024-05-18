@@ -11,9 +11,11 @@
 
 #include "parser_utils.h"
 
-void ping_command(int client_socket) {
-    std::string message = encode_simple_string("PONG");
-    send(client_socket, message.c_str(), message.size(), 0);
+void ping_command(ServerInfo &server_info, int client_socket) {
+    if (server_info.master_fd != client_socket) {
+        std::string message = encode_simple_string("PONG");
+        send(client_socket, message.c_str(), message.size(), 0);
+    }
 }
 
 void echo_command(std::vector<std::string> words, int client_socket) {

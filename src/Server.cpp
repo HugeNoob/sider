@@ -152,12 +152,12 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
 
     if (msg == null_bulk_string) return 0;
 
-    std::vector<std::vector<std::string>> commands = parse_message(msg);
-    for (auto command : commands) {
+    std::vector<std::pair<std::vector<std::string>, int>> commands = parse_message(msg);
+    for (auto [command, num_bytes] : commands) {
         std::string keyword = command[0];
 
         // Ignores RDB for now
-        if (keyword[0] == '$') continue;
+        // if (keyword[0] == '$') continue;
 
         std::transform(keyword.begin(), keyword.end(), keyword.begin(), toupper);
 
@@ -165,7 +165,7 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         // SET, DEL, writes are propagated to slaves
         if (keyword == "PING") {
             std::cout << "Handling case 1 PING\n";
-            ping_command(client_socket);
+            ping_command(server_info, client_socket);
         } else if (keyword == "ECHO") {
             std::cout << "Handling case 2 ECHO\n";
             echo_command(command, client_socket);
@@ -190,9 +190,17 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         } else if (keyword == "FULLRESYNC") {
             std::cout << "Handling case 11 FULLRESYNC\n";
             reply_ok(client_socket);
+        } else if (keyword == "ZZ") {
+            for (int replica_fd : server_info.replica_connections) {
+                propagate_command(encode_array({"REPLCONF", "GETACK", "*"}), replica_fd);
+            }
         } else {
             std::cout << "Handling else case: Do nothing\n";
             reply_null(client_socket);
+        }
+
+        if (client_socket == server_info.master_fd) {
+            server_info.master_repl_offset += num_bytes;
         }
     }
 
@@ -247,6 +255,9 @@ int handshake_master(ServerInfo &server_info) {
     memset(buf, 0, sizeof(buf));
     message = encode_array({"PSYNC", "?", "-1"});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
+
+    recv(master_fd, buf, sizeof(buf), 0);
+    memset(buf, 0, sizeof(buf));
 
     recv(master_fd, buf, sizeof(buf), 0);
     memset(buf, 0, sizeof(buf));

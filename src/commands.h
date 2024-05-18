@@ -14,7 +14,7 @@ using TimeStampedStringMap =
     std::unordered_map<std::string,
                        std::pair<std::string, std::optional<std::chrono::time_point<std::chrono::system_clock>>>>;
 
-void ping_command(int client_socket);
+void ping_command(ServerInfo &server_info, int client_socket);
 
 void echo_command(std::vector<std::string> words, int client_socket);
 
