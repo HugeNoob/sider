@@ -155,10 +155,6 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
     std::vector<std::pair<std::vector<std::string>, int>> commands = parse_message(msg);
     for (auto [command, num_bytes] : commands) {
         std::string keyword = command[0];
-
-        // Ignores RDB for now
-        // if (keyword[0] == '$') continue;
-
         std::transform(keyword.begin(), keyword.end(), keyword.begin(), toupper);
 
         // PING, ECHO, non-writes are handled by master
@@ -187,13 +183,6 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         } else if (keyword == "PSYNC") {
             std::cout << "Handling case 7 master receives PSYNC\n";
             psync_command(command, server_info, client_socket);
-        } else if (keyword == "FULLRESYNC") {
-            std::cout << "Handling case 11 FULLRESYNC\n";
-            reply_ok(client_socket);
-        } else if (keyword == "ZZ") {
-            for (int replica_fd : server_info.replica_connections) {
-                propagate_command(encode_array({"REPLCONF", "GETACK", "*"}), replica_fd);
-            }
         } else {
             std::cout << "Handling else case: Do nothing\n";
             reply_null(client_socket);
@@ -256,11 +245,31 @@ int handshake_master(ServerInfo &server_info) {
     message = encode_array({"PSYNC", "?", "-1"});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
-    recv(master_fd, buf, sizeof(buf), 0);
-    memset(buf, 0, sizeof(buf));
+    // Receive FULLRESYNC
+    while (buf[0] != '\n') {
+        recv(master_fd, buf, 1, 0);
+    }
 
-    recv(master_fd, buf, sizeof(buf), 0);
-    memset(buf, 0, sizeof(buf));
+    // Receive empty RDB
+    bool size_found = false;
+    int size = 0;
+    while (!size_found) {
+        recv(master_fd, buf, 1, 0);
+        if (buf[0] == '$' || buf[0] == '\r')
+            continue;
+        else if (buf[0] == '\n')
+            size_found = true;
+        else
+            size = size * 10 + (buf[0] - '0');
+    }
+
+    int recv_bytes = 0;
+    while (recv_bytes < size) {
+        recv(master_fd, buf, 1, 0);
+        recv_bytes++;
+    }
+
+    // Important to receive the above bit by bit, to not skip over incoming commands
 
     return 0;
 }
