@@ -102,7 +102,7 @@ void propagate_command(std::string const &command, int client_socket) {
 }
 
 void wait_command(ServerInfo server_info, int client_socket) {
-    std::string message = encode_integer(0);
+    std::string message = encode_integer(server_info.replica_connections.size());
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
