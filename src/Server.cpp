@@ -183,6 +183,9 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         } else if (keyword == "PSYNC") {
             std::cout << "Handling case 7 master receives PSYNC\n";
             psync_command(command, server_info, client_socket);
+        } else if (keyword == "WAIT") {
+            std::cout << "Handling case 8 master receives WAIT\n";
+            wait_command(server_info, client_socket);
         } else {
             std::cout << "Handling else case: Do nothing\n";
             reply_null(client_socket);

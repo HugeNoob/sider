@@ -24,6 +24,8 @@ std::string encode_array(std::vector<std::string> const &words);
 
 std::string encode_rdb_file(std::string const &message);
 
+std::string encode_integer(int num);
+
 std::vector<std::string> split(std::string s, std::string const &delimiter);
 
 std::string hexToBytes(std::string const &s);

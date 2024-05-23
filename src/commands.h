@@ -31,6 +31,8 @@ void replconf_command(ServerInfo server_info, int client_socket);
 
 void propagate_command(std::string const &command, int client_socket);
 
+void wait_command(ServerInfo server_info, int client_socket);
+
 void reply_ok(int client_socket);
 
 void reply_null(int client_socket);

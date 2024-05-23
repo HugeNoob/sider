@@ -101,6 +101,11 @@ void propagate_command(std::string const &command, int client_socket) {
     send(client_socket, command.c_str(), command.size(), 0);
 }
 
+void wait_command(ServerInfo server_info, int client_socket) {
+    std::string message = encode_integer(0);
+    send(client_socket, message.c_str(), message.size(), 0);
+}
+
 void reply_ok(int client_socket) {
     std::string message = encode_simple_string("OK");
     send(client_socket, message.c_str(), message.size(), 0);

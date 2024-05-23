@@ -113,6 +113,10 @@ std::string encode_rdb_file(std::string const &message) {
     return "$" + std::to_string(message.size()) + "\r\n" + message;
 }
 
+std::string encode_integer(int num) {
+    return ":" + std::to_string(num) + "\r\n";
+}
+
 std::string hexToBytes(std::string const &s) {
     std::string res;
     for (size_t i = 0; i < s.size(); i += 2) {
