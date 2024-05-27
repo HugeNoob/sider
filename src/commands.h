@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef COMMMANDS_H
 #define COMMANDS_H
 
@@ -31,10 +33,22 @@ void replconf_command(ServerInfo server_info, int client_socket);
 
 void propagate_command(std::string const &command, int client_socket);
 
-void wait_command(ServerInfo server_info, int client_socket);
+void wait_command(int responses_received, ServerInfo &server_info, int client_socket);
 
 void reply_ok(int client_socket);
 
 void reply_null(int client_socket);
+
+class WaitCommand {
+    int required_responses;
+    int timeout;
+    int responses_received;
+    ServerInfo server_info;
+    std::chrono::steady_clock::time_point start;
+
+   public:
+    WaitCommand(int required_responses, int timeout, ServerInfo &server_info);
+    int wait_or_timeout();
+};
 
 #endif

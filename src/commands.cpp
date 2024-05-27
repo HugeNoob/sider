@@ -1,5 +1,6 @@
 #include "commands.h"
 
+#include <poll.h>
 #include <sys/socket.h>
 
 #include <algorithm>
@@ -101,8 +102,8 @@ void propagate_command(std::string const &command, int client_socket) {
     send(client_socket, command.c_str(), command.size(), 0);
 }
 
-void wait_command(ServerInfo server_info, int client_socket) {
-    std::string message = encode_integer(server_info.replica_connections.size());
+void wait_command(int responses_received, ServerInfo &server_info, int client_socket) {
+    std::string message = encode_integer(responses_received);
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
@@ -113,4 +114,43 @@ void reply_ok(int client_socket) {
 
 void reply_null(int client_socket) {
     send(client_socket, null_bulk_string.c_str(), null_bulk_string.size(), 0);
+}
+
+WaitCommand::WaitCommand(int required_responses, int timeout, ServerInfo &server_info)
+    : required_responses(required_responses),
+      timeout(timeout),
+      responses_received(0),
+      server_info(server_info),
+      start(std::chrono::steady_clock::now()) {
+}
+
+int WaitCommand::wait_or_timeout() {
+    std::string message = encode_array({"REPLCONF", "GETACK", "*"});
+    for (int fd : server_info.replica_connections) {
+        send(fd, message.c_str(), message.size(), 0);
+    }
+
+    char buf[1024] = {};
+    int done = 0;
+    while (done < required_responses) {
+        int duration =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+        if (duration >= timeout) {
+            break;
+        }
+
+        std::vector<pollfd> fds;
+        for (int client_socket : server_info.replica_connections) {
+            fds.push_back({client_socket, POLLIN, 0});
+        }
+
+        int num_ready = poll(fds.data(), fds.size(), timeout - duration);
+        for (size_t i = 1; i < fds.size(); i++) {
+            if (fds[i].revents & POLLIN) {
+                recv(fds[i].fd, buf, sizeof(buf), 0);
+                done++;
+            }
+        }
+    }
+    return done;
 }

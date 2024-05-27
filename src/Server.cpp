@@ -170,6 +170,7 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
             for (int replica_fd : server_info.replica_connections) {
                 propagate_command(msg, replica_fd);
             }
+            server_info.bytes_propagated += recv_bytes;
             set_command(command, client_socket, store, server_info);
         } else if (keyword == "GET") {
             std::cout << "Handling case 4 GET\n";
@@ -185,7 +186,12 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
             psync_command(command, server_info, client_socket);
         } else if (keyword == "WAIT") {
             std::cout << "Handling case 8 master receives WAIT\n";
-            wait_command(server_info, client_socket);
+            if (server_info.bytes_propagated == 0) {
+                wait_command(server_info.replica_connections.size(), server_info, client_socket);
+            } else {
+                WaitCommand wait_cmd(std::stoi(command[1]), std::stoi(command[2]), server_info);
+                wait_command(wait_cmd.wait_or_timeout(), server_info, client_socket);
+            }
         } else {
             std::cout << "Handling else case: Do nothing\n";
             reply_null(client_socket);

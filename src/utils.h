@@ -21,6 +21,8 @@ struct ServerInfo {
     std::unordered_set<int> replica_connections;  // fd of all slaves
 
     static ServerInfo parse(int argc, char **argv);
+
+    int bytes_propagated = 0;
 };
 
 #endif
