@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef COMMMANDS_H
-#define COMMANDS_H
-
 #include <chrono>
 #include <iostream>
 #include <optional>
@@ -50,5 +47,3 @@ class WaitCommand {
     WaitCommand(int required_responses, int timeout, ServerInfo &server_info);
     int wait_or_timeout();
 };
-
-#endif

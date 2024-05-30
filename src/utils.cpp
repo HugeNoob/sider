@@ -3,6 +3,8 @@
 #include <random>
 #include <string>
 
+#include "logger.h"
+
 std::string generate_replid() {
     std::string replid;
     replid.reserve(40);
@@ -30,7 +32,7 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
             if (i + 1 < argc) {
                 server_info.port = std::stoi(argv[++i]);
             } else {
-                std::cerr << "Error: --port requires an argument.\n";
+                ERROR("Error: --port requires an argument");
                 exit(1);
             }
         } else if (arg == "--replicaof") {
@@ -38,23 +40,23 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
             if (i + 1 < argc) {
                 replica_info = argv[++i];
             } else {
-                std::cerr << "Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"";
+                ERROR("Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
                 exit(1);
             }
 
             int j = replica_info.find(' ');
             if (j == std::string::npos) {
-                std::cerr << "Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"";
+                ERROR("Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
                 exit(1);
             }
             server_info.master_host = replica_info.substr(0, j);
             server_info.master_port = stoi(replica_info.substr(j + 1, replica_info.size() - j - 1));
             if (server_info.master_port < 0) {
-                std::cerr << "Error: master_port must be a non-negative integer";
+                ERROR("Error: master_port must be a non-negative integer");
                 exit(1);
             }
         } else {
-            std::cerr << "Error: Unknown option '" << arg << "'.\n";
+            ERROR("Error: Unknown option '" + arg + "'.\n");
             exit(1);
         }
     }

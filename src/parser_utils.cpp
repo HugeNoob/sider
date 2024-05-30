@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-const std::string null_bulk_string = "$-1\r\n";
+#include "logger.h"
 
 std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string const &raw_message) {
     std::vector<std::pair<std::vector<std::string>, int>> commands;
@@ -59,14 +59,16 @@ std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string 
         i++;
     }
 
-    std::cout << "Parsed " << commands.size() << " commands" << std::endl;
-    for (int i = 0; i < commands.size(); i++) {
-        std::cout << "Command " << i << ", has " << commands[i].second << " bytes: ";
-        for (int j = 0; j < commands[i].first.size(); j++) {
-            write_string(commands[i].first[j]);
-            std::cout << ' ';
+    if (Logger::log_level >= Logger::DEBUG) {
+        ERROR("Parsed " + std::to_string(commands.size()) + " commands");
+        for (int i = 0; i < commands.size(); i++) {
+            std::stringstream ss;
+            ss << "Command " << i << ", has " << commands[i].second << " bytes: ";
+            for (int j = 0; j < commands[i].first.size(); j++) {
+                ss << commands[i].first[j] << ' ';
+            }
+            LOG(ss.str());
         }
-        std::cout << std::endl;
     }
 
     return commands;
@@ -138,60 +140,4 @@ std::vector<std::string> split(std::string s, std::string const &delimiter) {
     token = s.substr(0, pos);
     res.push_back(token);
     return res;
-}
-
-std::string write_string(std::string const &s) {
-    std::stringstream out;
-    for (auto ch : s) {
-        switch (ch) {
-            case '\'':
-                out << "\\'";
-                break;
-
-            case '\"':
-                out << "\\\"";
-                break;
-
-            case '\?':
-                out << "\\?";
-                break;
-
-            case '\\':
-                out << "\\\\";
-                break;
-
-            case '\a':
-                out << "\\a";
-                break;
-
-            case '\b':
-                out << "\\b";
-                break;
-
-            case '\f':
-                out << "\\f";
-                break;
-
-            case '\n':
-                out << "\\n";
-                break;
-
-            case '\r':
-                out << "\\r";
-                break;
-
-            case '\t':
-                out << "\\t";
-                break;
-
-            case '\v':
-                out << "\\v";
-                break;
-
-            default:
-                out << ch;
-        }
-    }
-    std::cout << out.str();
-    return out.str();
 }

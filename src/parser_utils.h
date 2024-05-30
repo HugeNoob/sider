@@ -1,10 +1,9 @@
-#ifndef PARSER_UTILS_H
-#define PARSER_UTILS_H
+#pragma once
 
 #include <string>
 #include <vector>
 
-extern const std::string null_bulk_string;
+const std::string null_bulk_string = "$-1\r\n";
 
 std::string get_first_word(std::string const &input);
 
@@ -29,7 +28,3 @@ std::string encode_integer(int num);
 std::vector<std::string> split(std::string s, std::string const &delimiter);
 
 std::string hexToBytes(std::string const &s);
-
-std::string write_string(std::string const &s);
-
-#endif

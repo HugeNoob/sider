@@ -1,5 +1,4 @@
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -24,5 +23,3 @@ struct ServerInfo {
 
     int bytes_propagated = 0;
 };
-
-#endif
