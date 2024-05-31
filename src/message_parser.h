@@ -1,0 +1,27 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+std::vector<std::string> split(std::string s, std::string const &delimiter);
+
+std::string hexToBytes(std::string const &s);
+
+class MessageParser {
+   public:
+    using RESPMessage = std::string;
+    using DecodedMessage = std::vector<std::string>;
+
+    static std::vector<std::pair<DecodedMessage, int>> parse_message(RESPMessage const &raw_message);
+    static DecodedMessage parse_simple_string(RESPMessage const &raw_message);
+    static DecodedMessage parse_bulk_string(RESPMessage const &raw_message);
+    static DecodedMessage parse_array(RESPMessage const &raw_message);
+
+    static RESPMessage encode_simple_string(std::string const &message);
+    static RESPMessage encode_bulk_string(std::string const &message);
+    static RESPMessage encode_array(std::vector<std::string> const &words);
+    static RESPMessage encode_rdb_file(std::string const &message);
+    static RESPMessage encode_integer(int num);
+};
+
+const MessageParser::RESPMessage null_bulk_string = "$-1\r\n";

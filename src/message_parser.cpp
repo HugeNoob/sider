@@ -1,4 +1,4 @@
-#include "parser_utils.h"
+#include "message_parser.h"
 
 #include <iostream>
 #include <sstream>
@@ -7,17 +7,22 @@
 
 #include "logger.h"
 
-std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string const &raw_message) {
-    std::vector<std::pair<std::vector<std::string>, int>> commands;
+using RESPMessage = MessageParser::RESPMessage;
+using DecodedMessage = MessageParser::DecodedMessage;
+
+static const std::string DELIM = "\r\n";
+
+std::vector<std::pair<DecodedMessage, int>> MessageParser::parse_message(RESPMessage const &raw_message) {
+    std::vector<std::pair<DecodedMessage, int>> commands;
     int i = 0;
     while (i < raw_message.size()) {
         int j = i;
         if (raw_message[i] == '+') {
             // Simple strings: Start with +, terminated with \r\n
-            std::string simple_string;
+            RESPMessage simple_string;
             while (i < raw_message.size()) {
                 simple_string.push_back(raw_message[i]);
-                if (raw_message.substr(i, 2) == "\r\n") {
+                if (raw_message.substr(i, 2) == DELIM) {
                     simple_string.push_back(raw_message[++i]);
                     break;
                 }
@@ -26,11 +31,11 @@ std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string 
             commands.push_back({parse_simple_string(simple_string), i - j + 1});
         } else if (raw_message[i] == '$') {
             // Bulk strings: $<length>\r\n<data>\r\n
-            std::string bulk_string;
+            RESPMessage bulk_string;
             int cnt = 0;
             while (i < raw_message.size()) {
                 bulk_string.push_back(raw_message[i]);
-                if (raw_message.substr(i, 2) == "\r\n") {
+                if (raw_message.substr(i, 2) == DELIM) {
                     bulk_string.push_back(raw_message[++i]);
                     if (++cnt == 2) break;
                 }
@@ -39,9 +44,9 @@ std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string 
             commands.push_back({parse_bulk_string(bulk_string), i - j + 1});
         } else if (raw_message[i] == '*') {
             // Arrays: *<number-of-elements>\r\n<element-1>...<element-n>
-            std::string arr;
+            RESPMessage arr;
             while (i < raw_message.size()) {
-                if (raw_message.substr(i, 2) == "\r\n") break;
+                if (raw_message.substr(i, 2) == DELIM) break;
                 arr.push_back(raw_message[i++]);
             }
             int num_elements = stoi(arr.substr(1, arr.size() - 1)) * 2;
@@ -50,7 +55,7 @@ std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string 
 
             // Get till num_element \r\n delimiters
             while (i < raw_message.size() && num_elements) {
-                if (raw_message.substr(i, 2) == "\r\n") num_elements--;
+                if (raw_message.substr(i, 2) == DELIM) num_elements--;
                 arr.push_back(raw_message[i++]);
             }
             arr.push_back(raw_message[i]);
@@ -74,49 +79,49 @@ std::vector<std::pair<std::vector<std::string>, int>> parse_message(std::string 
     return commands;
 }
 
-std::vector<std::string> parse_simple_string(std::string const &raw_message) {
+DecodedMessage MessageParser::parse_simple_string(RESPMessage const &raw_message) {
     std::string message = raw_message.substr(1, raw_message.size() - 1);
-    std::vector<std::string> tokens = split(message, "\r\n");
+    std::vector<std::string> tokens = split(message, DELIM);
     return tokens;
 }
 
-std::vector<std::string> parse_bulk_string(std::string const &raw_message) {
-    std::vector<std::string> tokens = split(raw_message, "\r\n");
+DecodedMessage MessageParser::parse_bulk_string(RESPMessage const &raw_message) {
+    std::vector<std::string> tokens = split(raw_message, DELIM);
     return tokens;
 }
 
-std::vector<std::string> parse_array(std::string const &raw_message) {
-    std::vector<std::string> tokens = split(raw_message, "\r\n");
-    std::vector<std::string> res;
+DecodedMessage MessageParser::parse_array(RESPMessage const &raw_message) {
+    std::vector<std::string> tokens = split(raw_message, DELIM);
+    DecodedMessage res;
     for (int i = 2; i < tokens.size(); i += 2) {
         res.push_back(tokens[i]);
     }
     return res;
 }
 
-std::string encode_simple_string(std::string const &message) {
-    return "+" + message + "\r\n";
+RESPMessage MessageParser::encode_simple_string(std::string const &message) {
+    return "+" + message + DELIM;
 }
 
-std::string encode_bulk_string(std::string const &message) {
-    return "$" + std::to_string(message.size()) + "\r\n" + message + "\r\n";
+RESPMessage MessageParser::encode_bulk_string(std::string const &message) {
+    return "$" + std::to_string(message.size()) + DELIM + message + DELIM;
 }
 
-std::string encode_array(std::vector<std::string> const &words) {
-    std::string res;
-    res += "*" + std::to_string(words.size()) + "\r\n";
+RESPMessage MessageParser::encode_array(std::vector<std::string> const &words) {
+    RESPMessage res;
+    res += "*" + std::to_string(words.size()) + DELIM;
     for (std::string word : words) {
-        res += "$" + std::to_string(word.size()) + "\r\n" + word + "\r\n";
+        res += "$" + std::to_string(word.size()) + DELIM + word + DELIM;
     }
     return res;
 }
 
-std::string encode_rdb_file(std::string const &message) {
-    return "$" + std::to_string(message.size()) + "\r\n" + message;
+RESPMessage MessageParser::encode_rdb_file(std::string const &message) {
+    return "$" + std::to_string(message.size()) + DELIM + message;
 }
 
-std::string encode_integer(int num) {
-    return ":" + std::to_string(num) + "\r\n";
+RESPMessage MessageParser::encode_integer(int num) {
+    return ":" + std::to_string(num) + DELIM;
 }
 
 std::string hexToBytes(std::string const &s) {

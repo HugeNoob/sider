@@ -4,7 +4,7 @@ project(redis-starter-cpp)
 
 set(SOURCE_FILES 
     src/Server.cpp
-    src/parser_utils.cpp 
+    src/message_parser.cpp 
     src/commands.cpp 
     src/utils.cpp
     src/logger.cpp

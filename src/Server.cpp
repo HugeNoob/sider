@@ -18,7 +18,7 @@
 
 #include "commands.h"
 #include "logger.h"
-#include "parser_utils.h"
+#include "message_parser.h"
 
 int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringMap &store);
 int handshake_master(ServerInfo &server_info);
@@ -128,8 +128,8 @@ int main(int argc, char **argv) {
 }
 
 int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringMap &store) {
-    char buffer[1024] = {};
-    int recv_bytes = recv(client_socket, buffer, sizeof(buffer), 0);
+    std::vector<char> buf(1024);
+    int recv_bytes = recv(client_socket, buf.data(), 1024, 0);
 
     if (recv_bytes < 0) {
         ERROR("Error receiving bytes while handling client");
@@ -139,15 +139,14 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
         return 1;
     }
 
-    std::string msg(buffer);
+    std::string msg(buf.data());
     std::stringstream ss;
-    ss << "Port " << server_info.port << ", message received from " << client_socket << ": ";
-    ss << msg << '\n';
+    ss << "Port " << server_info.port << ", message received from " << client_socket << ": " << msg;
     LOG(ss.str());
 
     if (msg == null_bulk_string) return 0;
 
-    std::vector<std::pair<std::vector<std::string>, int>> commands = parse_message(msg);
+    std::vector<std::pair<MessageParser::DecodedMessage, int>> commands = MessageParser::parse_message(msg);
     for (auto [command, num_bytes] : commands) {
         std::string keyword = command[0];
         std::transform(keyword.begin(), keyword.end(), keyword.begin(), toupper);
@@ -227,38 +226,38 @@ int handshake_master(ServerInfo &server_info) {
     server_info.master_fd = master_fd;
 
     std::vector<std::string> arr = {"ping"};
-    std::string message = encode_array(arr);
+    MessageParser::RESPMessage message = MessageParser::encode_array(arr);
     if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
         ERROR("Failed to ping master");
         return 1;
     }
 
-    char buf[1024] = {'\0'};
-    recv(master_fd, buf, sizeof(buf), 0);
-    memset(buf, 0, sizeof(buf));
-    message = encode_array({"REPLCONF", "listening-port", std::to_string(server_info.port)});
+    std::vector<char> buf(1024);
+    recv(master_fd, buf.data(), 1024, 0);
+    buf.clear();
+    message = MessageParser::encode_array({"REPLCONF", "listening-port", std::to_string(server_info.port)});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
-    recv(master_fd, buf, sizeof(buf), 0);
-    memset(buf, 0, sizeof(buf));
-    message = encode_array({"REPLCONF", "capa", "psync2"});
+    recv(master_fd, buf.data(), 1024, 0);
+    buf.clear();
+    message = MessageParser::encode_array({"REPLCONF", "capa", "psync2"});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
-    recv(master_fd, buf, sizeof(buf), 0);
-    memset(buf, 0, sizeof(buf));
-    message = encode_array({"PSYNC", "?", "-1"});
+    recv(master_fd, buf.data(), 1024, 0);
+    buf.clear();
+    message = MessageParser::encode_array({"PSYNC", "?", "-1"});
     send(server_info.master_fd, message.c_str(), message.size(), 0);
 
     // Receive FULLRESYNC
     while (buf[0] != '\n') {
-        recv(master_fd, buf, 1, 0);
+        recv(master_fd, buf.data(), 1, 0);
     }
 
     // Receive empty RDB
     bool size_found = false;
     int size = 0;
     while (!size_found) {
-        recv(master_fd, buf, 1, 0);
+        recv(master_fd, buf.data(), 1, 0);
         if (buf[0] == '$' || buf[0] == '\r')
             continue;
         else if (buf[0] == '\n')
@@ -269,7 +268,7 @@ int handshake_master(ServerInfo &server_info) {
 
     int recv_bytes = 0;
     while (recv_bytes < size) {
-        recv(master_fd, buf, 1, 0);
+        recv(master_fd, buf.data(), 1, 0);
         recv_bytes++;
     }
 
