@@ -2,13 +2,8 @@
 
 #include <iostream>
 #include <sstream>
-#include <string>
-#include <vector>
 
 #include "logger.h"
-
-using RESPMessage = MessageParser::RESPMessage;
-using DecodedMessage = MessageParser::DecodedMessage;
 
 static const std::string DELIM = "\r\n";
 
@@ -64,7 +59,7 @@ std::vector<std::pair<DecodedMessage, int>> MessageParser::parse_message(RESPMes
         i++;
     }
 
-    if (Logger::log_level >= Logger::DEBUG) {
+    if (Logger::log_level >= Logger::Level::DEBUG) {
         ERROR("Parsed " + std::to_string(commands.size()) + " commands");
         for (int i = 0; i < commands.size(); i++) {
             std::stringstream ss;

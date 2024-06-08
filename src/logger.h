@@ -5,7 +5,7 @@
 
 class Logger {
    public:
-    enum Level { SILENT, DEBUG, ERROR };
+    enum class Level { SILENT, DEBUG, ERROR };
     static Level log_level;
     static void log(std::string const &message);
     static void log_error(std::string const &message);
@@ -13,14 +13,14 @@ class Logger {
 
 #define LOG(Message_)                                                                                       \
     do {                                                                                                    \
-        if (Logger::log_level >= Logger::DEBUG) {                                                           \
+        if (Logger::log_level >= Logger::Level::DEBUG) {                                                    \
             Logger::log(static_cast<std::ostringstream &>(std::ostringstream().flush() << Message_).str()); \
         }                                                                                                   \
     } while (0)
 
 #define ERROR(Message_)                                                                                           \
     do {                                                                                                          \
-        if (Logger::log_level >= Logger::ERROR) {                                                                 \
+        if (Logger::log_level >= Logger::Level::ERROR) {                                                          \
             Logger::log_error(static_cast<std::ostringstream &>(std::ostringstream().flush() << Message_).str()); \
         }                                                                                                         \
     } while (0)

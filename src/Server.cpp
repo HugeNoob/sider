@@ -6,15 +6,6 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <chrono>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <optional>
-#include <sstream>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 #include "commands.h"
 #include "logger.h"
@@ -146,49 +137,36 @@ int handle_client(int client_socket, ServerInfo &server_info, TimeStampedStringM
 
     if (msg == null_bulk_string) return 0;
 
-    std::vector<std::pair<MessageParser::DecodedMessage, int>> commands = MessageParser::parse_message(msg);
+    std::vector<std::pair<DecodedMessage, int>> commands = MessageParser::parse_message(msg);
     for (auto [command, num_bytes] : commands) {
-        std::string keyword = command[0];
-        std::transform(keyword.begin(), keyword.end(), keyword.begin(), toupper);
+        CommandPtr cmd_ptr;
+        CommandType type;
 
-        // PING, ECHO, non-writes are handled by master
-        // SET, DEL, writes are propagated to slaves
-        if (keyword == "PING") {
-            LOG("Handling case 1 PING");
-            ping_command(server_info, client_socket);
-        } else if (keyword == "ECHO") {
-            LOG("Handling case 2 ECHO");
-            echo_command(command, client_socket);
-        } else if (keyword == "SET") {
-            LOG("Handling case 3 SET");
-            for (int replica_fd : server_info.replica_connections) {
-                propagate_command(msg, replica_fd);
+        try {
+            cmd_ptr = Command::parse(command);
+            cmd_ptr->set_client_socket(client_socket);
+            type = cmd_ptr->get_type();
+
+            // At some point we must distinguish these two anyway, unless we blindly pass all information
+            if (type == CommandType::Set) {
+                auto setCommandPtr = std::static_pointer_cast<SetCommand>(cmd_ptr);
+                setCommandPtr->set_store_ref(store);
+            } else if (type == CommandType::Get) {
+                auto getCommandPtr = std::static_pointer_cast<GetCommand>(cmd_ptr);
+                getCommandPtr->set_store_ref(store);
             }
-            server_info.bytes_propagated += recv_bytes;
-            set_command(command, client_socket, store, server_info);
-        } else if (keyword == "GET") {
-            LOG("Handling case 4 GET");
-            get_command(command, client_socket, store);
-        } else if (keyword == "INFO") {
-            LOG("Handling case 5 INFO");
-            info_command(server_info, client_socket);
-        } else if (keyword == "REPLCONF") {
-            LOG("Handling case 6 REPLCONF");
-            replconf_command(server_info, client_socket);
-        } else if (keyword == "PSYNC") {
-            LOG("Handling case 7 master receives PSYNC");
-            psync_command(command, server_info, client_socket);
-        } else if (keyword == "WAIT") {
-            LOG("Handling case 8 master receives WAIT");
-            if (server_info.bytes_propagated == 0) {
-                wait_command(server_info.replica_connections.size(), server_info, client_socket);
-            } else {
-                WaitCommand wait_cmd(std::stoi(command[1]), std::stoi(command[2]), server_info);
-                wait_command(wait_cmd.wait_or_timeout(), server_info, client_socket);
-            }
-        } else {
-            LOG("Handling else case: Do nothing");
-            reply_null(client_socket);
+
+            cmd_ptr->execute(server_info);
+        } catch (CommandParseError e) {
+            std::stringstream ss;
+            ss << "Error while handling command. Command: " << msg << ". Error: " << e.what();
+            ERROR(ss.str());
+            return 1;
+        }
+
+        if (type == CommandType::Set) {
+            LOG("propagating command...");
+            propagate_command(msg, server_info);
         }
 
         if (client_socket == server_info.master_fd) {
@@ -226,7 +204,7 @@ int handshake_master(ServerInfo &server_info) {
     server_info.master_fd = master_fd;
 
     std::vector<std::string> arr = {"ping"};
-    MessageParser::RESPMessage message = MessageParser::encode_array(arr);
+    RESPMessage message = MessageParser::encode_array(arr);
     if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
         ERROR("Failed to ping master");
         return 1;

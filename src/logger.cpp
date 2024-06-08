@@ -1,9 +1,8 @@
 #include "logger.h"
 
 #include <iostream>
-#include <sstream>
 
-Logger::Level Logger::log_level = SILENT;
+Logger::Level Logger::log_level = Logger::Level::SILENT;
 
 std::string stringify(std::string const &message) {
     std::stringstream ss;
