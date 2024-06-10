@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.13)
 project(redis-starter-cpp)
 
 set(SOURCE_FILES 
-    src/Server.cpp
+    src/main.cpp
+    src/server.cpp
     src/message_parser.cpp 
     src/commands.cpp 
-    src/utils.cpp
     src/logger.cpp
 )
 

@@ -9,10 +9,8 @@
 #include <vector>
 
 #include "message_parser.h"
+#include "server.h"
 #include "utils.h"
-
-using TimeStamp = std::optional<std::chrono::time_point<std::chrono::system_clock>>;
-using TimeStampedStringMap = std::unordered_map<std::string, std::pair<std::string, TimeStamp>>;
 
 class CommandParseError : public std::runtime_error {
    public:

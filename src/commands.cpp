@@ -61,7 +61,7 @@ CommandPtr PingCommand::parse(DecodedMessage const &decoded_msg) {
 }
 
 void PingCommand::execute(ServerInfo &server_info) {
-    if (server_info.master_fd != this->client_socket) {
+    if (server_info.replication_info.master_fd != this->client_socket) {
         RESPMessage message = MessageParser::encode_simple_string("PONG");
         send(this->client_socket, message.c_str(), message.size(), 0);
     }
@@ -97,7 +97,7 @@ CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
 }
 
 void SetCommand::execute(ServerInfo &server_info) {
-    if (client_socket != server_info.master_fd) {
+    if (client_socket != server_info.replication_info.master_fd) {
         RESPMessage message = MessageParser::encode_simple_string("OK");
         send(this->client_socket, message.c_str(), message.size(), 0);
     }
@@ -147,9 +147,9 @@ CommandPtr InfoCommand::parse(DecodedMessage const &decoded_msg) {
 }
 
 void InfoCommand::execute(ServerInfo &server_info) {
-    std::string role = server_info.master_port == -1 ? "role:master" : "role:slave";
-    std::string replid = "master_replid:" + std::to_string(server_info.master_repl_offset);
-    std::string offset = "master_repl_offset:" + std::to_string(server_info.master_repl_offset);
+    std::string role = server_info.replication_info.master_port == -1 ? "role:master" : "role:slave";
+    std::string replid = "master_replid:" + std::to_string(server_info.replication_info.master_repl_offset);
+    std::string offset = "master_repl_offset:" + std::to_string(server_info.replication_info.master_repl_offset);
     std::string temp_message = role + "\n" + replid + "\n" + offset + "\n";
     RESPMessage message = MessageParser::encode_bulk_string(temp_message);
     send(this->client_socket, message.c_str(), message.size(), 0);
@@ -165,10 +165,11 @@ CommandPtr ReplconfCommand::parse(DecodedMessage const &decoded_msg) {
 
 void ReplconfCommand::execute(ServerInfo &server_info) {
     RESPMessage message;
-    if (server_info.master_fd == -1) {
+    if (!server_info.is_replica()) {
         message = MessageParser::encode_simple_string("OK");
     } else {
-        message = MessageParser::encode_array({"REPLCONF", "ACK", std::to_string(server_info.master_repl_offset)});
+        message = MessageParser::encode_array(
+            {"REPLCONF", "ACK", std::to_string(server_info.replication_info.master_repl_offset)});
     }
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
@@ -188,11 +189,11 @@ CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
 }
 
 void PsyncCommand::execute(ServerInfo &server_info) {
-    std::string temp_message =
-        "FULLRESYNC " + server_info.master_replid + " " + std::to_string(server_info.master_repl_offset);
+    std::string temp_message = "FULLRESYNC " + server_info.replication_info.master_replid + " " +
+                               std::to_string(server_info.replication_info.master_repl_offset);
     RESPMessage message = MessageParser::encode_simple_string(temp_message);
     send(this->client_socket, message.c_str(), message.size(), 0);
-    server_info.replica_connections.insert(this->client_socket);
+    server_info.replication_info.replica_connections.insert(this->client_socket);
 
     // Send over a copy of store to replica
     message = MessageParser::encode_rdb_file(PsyncCommand::empty_rdb_in_bytes);
@@ -200,7 +201,7 @@ void PsyncCommand::execute(ServerInfo &server_info) {
 }
 
 void propagate_command(RESPMessage const &command, ServerInfo &server_info) {
-    for (int replica : server_info.replica_connections) {
+    for (int replica : server_info.replication_info.replica_connections) {
         send(replica, command.c_str(), command.size(), 0);
     }
     server_info.bytes_propagated += command.size();
@@ -219,13 +220,13 @@ CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
 
 void WaitCommand::execute(ServerInfo &server_info) {
     if (server_info.bytes_propagated == 0) {
-        RESPMessage message = MessageParser::encode_integer(server_info.replica_connections.size());
+        RESPMessage message = MessageParser::encode_integer(server_info.replication_info.replica_connections.size());
         send(this->client_socket, message.c_str(), message.size(), 0);
         return;
     }
 
     RESPMessage message = MessageParser::encode_array({"REPLCONF", "GETACK", "*"});
-    for (int fd : server_info.replica_connections) {
+    for (int fd : server_info.replication_info.replica_connections) {
         send(fd, message.c_str(), message.size(), 0);
     }
 
@@ -239,7 +240,7 @@ void WaitCommand::execute(ServerInfo &server_info) {
         }
 
         std::vector<pollfd> fds;
-        for (int client_socket : server_info.replica_connections) {
+        for (int client_socket : server_info.replication_info.replica_connections) {
             fds.push_back({client_socket, POLLIN, 0});
         }
 
