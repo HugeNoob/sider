@@ -35,13 +35,12 @@ using ServerPtr = std::shared_ptr<Server>;
 class Server {
    public:
     Server(ServerInfo const &server_info);
+    ~Server();
 
-    int handshake_master(ServerInfo &server_info);
+    void listen();
 
     ServerInfo &get_server_info();
-
     int get_server_fd() const;
-
     TimeStampedStringMap &get_store();
 
    private:
@@ -50,6 +49,8 @@ class Server {
     TimeStampedStringMap store;
 
     void start();
+
+    int handshake_master(ServerInfo &server_info);
 };
 
 std::string generate_replid();
