@@ -8,12 +8,9 @@
 #include "message_parser.h"
 #include "utils.h"
 
-Handler::Handler(ServerPtr const &server) : server(server) {
-}
-
-int Handler::handle_client(int client_socket) {
-    ServerInfo &server_info = this->server->get_server_info();
-    TimeStampedStringMap &store = this->server->get_store();
+int Handler::handle_client(int client_socket, Server &server) {
+    ServerInfo &server_info = server.get_server_info();
+    TimeStampedStringMap &store = server.get_store();
 
     std::vector<char> buf(1024);
     int recv_bytes = recv(client_socket, buf.data(), 1024, 0);
