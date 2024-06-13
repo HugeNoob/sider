@@ -105,7 +105,7 @@ RESPMessage MessageParser::encode_bulk_string(std::string const &message) {
 RESPMessage MessageParser::encode_array(std::vector<std::string> const &words) {
     RESPMessage res;
     res += "*" + std::to_string(words.size()) + DELIM;
-    for (std::string word : words) {
+    for (std::string const &word : words) {
         res += "$" + std::to_string(word.size()) + DELIM + word + DELIM;
     }
     return res;

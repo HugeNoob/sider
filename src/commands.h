@@ -17,7 +17,7 @@ class CommandParseError : public std::runtime_error {
     CommandParseError(std::string const &error_msg);
 };
 
-enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait };
+enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet };
 
 class Command;
 using CommandPtr = std::shared_ptr<Command>;
@@ -138,6 +138,18 @@ class WaitCommand : public Command {
     int timeout_milliseconds;
     int responses_needed;
     std::chrono::steady_clock::time_point start;
+};
+
+class ConfigGetCommand : public Command {
+   public:
+    ConfigGetCommand(std::vector<std::string> const &params);
+
+    static CommandPtr parse(DecodedMessage const &decoded_msg);
+
+    void execute(ServerInfo &server_info) override;
+
+   private:
+    std::vector<std::string> params;
 };
 
 void propagate_command(RESPMessage const &command, ServerInfo &server_info);

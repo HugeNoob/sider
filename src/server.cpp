@@ -22,34 +22,50 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--port") {
-            if (i + 1 < argc) {
-                server_info.tcp_port = std::stoi(argv[++i]);
-            } else {
+            if (i + 1 >= argc) {
                 ERROR("Error: --port requires an argument");
                 exit(1);
             }
+
+            try {
+                server_info.tcp_port = std::stoi(argv[++i]);
+            } catch (const std::invalid_argument &e) {
+                ERROR("Invalid argument: port is not a valid integer");
+            } catch (const std::out_of_range &e) {
+                ERROR("Out of range: The port number is too large or too small.");
+            }
         } else if (arg == "--replicaof") {
-            std::string replica_info;
-            if (i + 1 < argc) {
-                replica_info = argv[++i];
-            } else {
-                ERROR("Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
+            if (i + 1 >= argc) {
+                ERROR("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
                 exit(1);
             }
 
+            std::string replica_info = argv[++i];
             int j = replica_info.find(' ');
             if (j == std::string::npos) {
-                ERROR("Error: --replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
+                ERROR("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
                 exit(1);
             }
             server_info.replication_info.master_host = replica_info.substr(0, j);
             server_info.replication_info.master_port = stoi(replica_info.substr(j + 1, replica_info.size() - j - 1));
             if (server_info.replication_info.master_port < 0) {
-                ERROR("Error: master_port must be a non-negative integer");
+                ERROR("master_port must be a non-negative integer");
                 exit(1);
             }
+        } else if (arg == "--dir") {
+            if (i + 1 >= argc) {
+                ERROR("--dir requires an argument");
+                exit(1);
+            }
+            server_info.dir = argv[++i];
+        } else if (arg == "--dbfilename") {
+            if (i + 1 >= argc) {
+                ERROR("--dbfilename requires an argument");
+                exit(1);
+            }
+            server_info.dbfilename = argv[++i];
         } else {
-            ERROR("Error: Unknown option '" + arg + "'.\n");
+            ERROR("Unknown option '" + arg + "'.\n");
             exit(1);
         }
     }

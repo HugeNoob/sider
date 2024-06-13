@@ -12,6 +12,9 @@ struct ServerInfo {
     std::vector<int> client_sockets;
     int bytes_propagated = 0;
 
+    std::string dir;
+    std::string dbfilename;
+
     static ServerInfo parse(int argc, char **argv);
 
     bool is_replica() const;

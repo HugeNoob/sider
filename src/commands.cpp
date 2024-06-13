@@ -46,10 +46,18 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
     } else if (command == "WAIT") {
         LOG("Handling case 8 master receives WAIT");
         return WaitCommand::parse(decoded_msg);
-    } else {
-        LOG("Handling else case: Do nothing");
-        throw CommandParseError("Unknown command during parsing");
+    } else if (command == "CONFIG" && decoded_msg.size() > 1) {
+        std::string config_type = decoded_msg[1];
+        transform(config_type.begin(), config_type.end(), config_type.begin(), toupper);
+
+        if (config_type == "GET") {
+            LOG("Handling case 8 master receives CONFIG GET");
+            return ConfigGetCommand::parse(decoded_msg);
+        }
     }
+
+    LOG("Handling else case: Do nothing");
+    throw CommandParseError("Unknown command during parsing");
 }
 
 PingCommand::PingCommand() {
@@ -255,4 +263,36 @@ void WaitCommand::execute(ServerInfo &server_info) {
 
     message = MessageParser::encode_integer(responses_received);
     send(client_socket, message.c_str(), message.size(), 0);
+}
+
+ConfigGetCommand::ConfigGetCommand(std::vector<std::string> const &params) : params(params) {
+    this->type = CommandType::ConfigGet;
+}
+
+CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
+    std::vector<std::string> params;
+
+    // First two words should be CONFIG GET
+    for (int i = 2; i < decoded_msg.size(); i++) {
+        params.push_back(decoded_msg[i]);
+    }
+
+    return std::make_shared<ConfigGetCommand>(params);
+}
+
+void ConfigGetCommand::execute(ServerInfo &server_info) {
+    std::vector<std::string> message_array;
+    for (std::string param : this->params) {
+        message_array.push_back(param);
+
+        transform(param.begin(), param.end(), param.begin(), tolower);
+        if (param == "dir") {
+            message_array.push_back(server_info.dir);
+        } else if (param == "dbfilename") {
+            message_array.push_back(server_info.dbfilename);
+        }
+    }
+
+    RESPMessage encoded_message = MessageParser::encode_array(message_array);
+    send(client_socket, encoded_message.c_str(), encoded_message.size(), 0);
 }
