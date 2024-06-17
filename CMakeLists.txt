@@ -9,6 +9,7 @@ set(SOURCE_FILES
     src/message_parser.cpp 
     src/commands.cpp 
     src/logger.cpp
+    src/rdb_parser.cpp
 )
 
 set(CMAKE_CXX_STANDARD 23) # Enable the C++23 standard

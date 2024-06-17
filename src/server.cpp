@@ -11,6 +11,7 @@
 #include "handler.h"
 #include "logger.h"
 #include "message_parser.h"
+#include "rdb_parser.h"
 
 ServerInfo ServerInfo::parse(int argc, char **argv) {
     ServerInfo server_info;
@@ -181,6 +182,11 @@ int Server::handshake_master(ServerInfo &server_info) {
 
 void Server::start() {
     LOG("starting server...");
+
+    if (this->server_info.dbfilename != "") {
+        this->store = RDBParser::parse_rdb(this->server_info.dir + '/' + this->server_info.dbfilename);
+    }
+
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     this->server_fd = server_fd;
     if (server_fd < 0) {
