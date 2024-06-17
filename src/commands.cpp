@@ -10,6 +10,8 @@
 
 CommandParseError::CommandParseError(std::string const &error_msg) : std::runtime_error(error_msg){};
 
+CommandInvalidArgsError::CommandInvalidArgsError(std::string const &error_msg) : std::runtime_error(error_msg){};
+
 CommandType Command::get_type() const {
     return this->type;
 }
@@ -46,14 +48,21 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
     } else if (command == "WAIT") {
         LOG("Handling case 8 master receives WAIT");
         return WaitCommand::parse(decoded_msg);
-    } else if (command == "CONFIG" && decoded_msg.size() > 1) {
+    } else if (command == "CONFIG") {
+        if (decoded_msg.size() <= 1) {
+            throw CommandInvalidArgsError("Invalid arguments for CONFIG command");
+        }
+
         std::string config_type = decoded_msg[1];
         transform(config_type.begin(), config_type.end(), config_type.begin(), toupper);
 
         if (config_type == "GET") {
-            LOG("Handling case 8 master receives CONFIG GET");
+            LOG("Handling case 9 master receives CONFIG GET");
             return ConfigGetCommand::parse(decoded_msg);
         }
+    } else if (command == "KEYS") {
+        LOG("HANDLING case 10 master receives KEYS");
+        return KeysCommand::parse(decoded_msg);
     }
 
     LOG("Handling else case: Do nothing");
@@ -295,4 +304,43 @@ void ConfigGetCommand::execute(ServerInfo &server_info) {
 
     RESPMessage encoded_message = MessageParser::encode_array(message_array);
     send(client_socket, encoded_message.c_str(), encoded_message.size(), 0);
+}
+
+KeysCommand::KeysCommand(std::string const &pattern) : pattern(pattern) {
+    this->type = CommandType::Keys;
+}
+
+CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
+    std::string pattern = decoded_msg[1];
+    if (pattern.back() == '*') pattern.pop_back();
+
+    return std::make_shared<KeysCommand>(pattern);
+}
+
+void KeysCommand::set_store_ref(TimeStampedStringMap &store) {
+    this->store_ref = &store;
+}
+
+void KeysCommand::execute(ServerInfo &server_info) {
+    std::vector<std::string> matching_values;
+    for (auto [k, p] : *(this->store_ref)) {
+        auto [v, ts] = p;
+
+        bool expired = ts.has_value() && std::chrono::system_clock::now() >= ts.value();
+        if (expired) {
+            this->store_ref->erase(this->store_ref->find(v));
+            continue;
+        }
+
+        if (KeysCommand::match(k, this->pattern)) {
+            matching_values.push_back(k);
+        }
+    }
+
+    RESPMessage encoded_message = MessageParser::encode_array(matching_values);
+    send(client_socket, encoded_message.c_str(), encoded_message.size(), 0);
+}
+
+bool KeysCommand::match(std::string const &target, std::string const &pattern) {
+    return target.compare(0, pattern.size(), pattern) == 0;
 }

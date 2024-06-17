@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "logger.h"
-#include "utils.h"
 
 void print(uint8_t c) {
     std::cout << std::hex << std::setw(2) << static_cast<int>(c) << std::endl;

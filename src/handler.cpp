@@ -40,13 +40,16 @@ int Handler::handle_client(int client_socket, Server &server) {
             cmd_ptr->set_client_socket(client_socket);
             type = cmd_ptr->get_type();
 
-            // At some point we must distinguish these two anyway, unless we blindly pass all information
+            // At some point we must distinguish these anyway, unless we blindly pass all information
             if (type == CommandType::Set) {
                 auto setCommandPtr = std::static_pointer_cast<SetCommand>(cmd_ptr);
                 setCommandPtr->set_store_ref(store);
             } else if (type == CommandType::Get) {
                 auto getCommandPtr = std::static_pointer_cast<GetCommand>(cmd_ptr);
                 getCommandPtr->set_store_ref(store);
+            } else if (type == CommandType::Keys) {
+                auto keysCommandPtr = std::static_pointer_cast<KeysCommand>(cmd_ptr);
+                keysCommandPtr->set_store_ref(store);
             }
 
             cmd_ptr->execute(server_info);

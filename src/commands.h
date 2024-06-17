@@ -1,9 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <iostream>
 #include <memory>
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,7 +15,12 @@ class CommandParseError : public std::runtime_error {
     CommandParseError(std::string const &error_msg);
 };
 
-enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet };
+class CommandInvalidArgsError : public std::runtime_error {
+   public:
+    CommandInvalidArgsError(std::string const &error_msg);
+};
+
+enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys };
 
 class Command;
 using CommandPtr = std::shared_ptr<Command>;
@@ -150,6 +153,23 @@ class ConfigGetCommand : public Command {
 
    private:
     std::vector<std::string> params;
+};
+
+class KeysCommand : public Command {
+   public:
+    KeysCommand(std::string const &pattern);
+
+    static CommandPtr parse(DecodedMessage const &decoded_msg);
+
+    void execute(ServerInfo &server_info) override;
+
+    void set_store_ref(TimeStampedStringMap &store);
+
+   private:
+    std::string pattern;
+    TimeStampedStringMap *store_ref;
+
+    bool match(std::string const &target, std::string const &pattern);
 };
 
 void propagate_command(RESPMessage const &command, ServerInfo &server_info);
