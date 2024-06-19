@@ -114,11 +114,19 @@ CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
 }
 
 void SetCommand::execute(ServerInfo &server_info) {
+    if (server_info.is_replica() && this->client_socket != server_info.replication_info.master_fd) {
+        RESPMessage message = MessageParser::encode_simple_error("Cannot write to replica");
+        send(this->client_socket, message.c_str(), message.size(), 0);
+        return;
+    }
+
+    store_ref->insert({this->key, {this->value, this->expire_time}});
+
+    // Replicas should not respond to master during SET propagation
     if (client_socket != server_info.replication_info.master_fd) {
         RESPMessage message = MessageParser::encode_simple_string("OK");
         send(this->client_socket, message.c_str(), message.size(), 0);
     }
-    store_ref->insert({this->key, {this->value, this->expire_time}});
 }
 
 void SetCommand::set_store_ref(TimeStampedStringMap &store) {

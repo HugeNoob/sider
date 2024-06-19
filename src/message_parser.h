@@ -22,6 +22,7 @@ class MessageParser {
     static RESPMessage encode_array(std::vector<std::string> const &words);
     static RESPMessage encode_rdb_file(std::string const &message);
     static RESPMessage encode_integer(int num);
+    static RESPMessage encode_simple_error(std::string const &message);
 };
 
 const RESPMessage null_bulk_string = "$-1\r\n";
