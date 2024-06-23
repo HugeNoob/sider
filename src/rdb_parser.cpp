@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <bitset>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -44,7 +45,7 @@ void print_file(std::string const &file_path) {
     file.close();
 }
 
-// ./spawn_redis_server.sh --dir "/home/lingxi/codecrafters-redis-cpp" --dbfilename "dump.rdb"
+// Local testing: ./spawn_redis_server.sh --dir "/home/lingxi/codecrafters-redis-cpp" --dbfilename "dump.rdb"
 TimeStampedStringMap RDBParser::parse_rdb(std::string const &file_path) {
     LOG("parsing rdb at: " + file_path);
 
@@ -152,24 +153,73 @@ std::pair<std::string, std::string> RDBParser::parse_string(std::ifstream &fin) 
 }
 
 TimeStamp RDBParser::parse_expiry(std::ifstream &fin, RDBParser::Delimiters delim) {
-    std::string expiry_timestamp;
-    expiry_timestamp.reserve(8);
+    std::stringstream raw_timestamp;
 
     uint8_t c;
     for (int i = 0; i < 8; i++) {
         fin >> std::hex >> std::noskipws >> c;
-        expiry_timestamp.push_back(c);
+        raw_timestamp << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned short>(c);
     }
-    // Expiry is stored in little-endian
+    std::string expiry_timestamp = raw_timestamp.str();
     reverse(expiry_timestamp.begin(), expiry_timestamp.end());
 
-    if (delim == RDBParser::Delimiters::EXPIRY_MILLISECONDS) {
-        std::chrono::milliseconds duration(stoll(expiry_timestamp));
-        return TimeStamp(duration);
-    } else if (delim == RDBParser::Delimiters::EXPIRY_SECONDS) {
-        std::chrono::seconds duration(stoll(expiry_timestamp));
-        return TimeStamp(duration);
+    // Reverse will reverse all our hex numbers, so we need to reverse each block of 2 again
+    for (int i = 0; i < expiry_timestamp.size(); i += 2) {
+        char tmp = expiry_timestamp[i];
+        expiry_timestamp[i] = expiry_timestamp[i + 1];
+        expiry_timestamp[i + 1] = tmp;
+    }
+
+    try {
+        unsigned long expiry_value = std::stoul(expiry_timestamp, nullptr, 16);
+
+        if (delim == RDBParser::Delimiters::EXPIRY_MILLISECONDS) {
+            std::chrono::milliseconds duration(expiry_value);
+            return TimeStamp(duration);
+        } else if (delim == RDBParser::Delimiters::EXPIRY_SECONDS) {
+            std::chrono::seconds duration(expiry_value);
+            return TimeStamp(duration);
+        }
+    } catch (const std::invalid_argument &e) {
+        std::cerr << "Out of range when parsing rdb timestamp: " << e.what() << std::endl;
+        throw e;
     }
 
     throw std::runtime_error("Unknown expiry time unit");
+}
+
+// Not used in the challenge
+uint64_t RDBParser::parse_size_encoding(std::ifstream &fin) {
+    uint8_t c;
+    fin >> c;
+    std::bitset<4> bs(c);
+    int last_bit = bs[3], second_last_bit = bs[2];
+
+    // Supposed to check "first two" bits aka leftmost, but this is flipped
+    // 0x8 gives 0 0 0 1
+    RDBParser::SizeEncoding encoded_size;
+    if (last_bit == 0 && second_last_bit == 0) {
+        encoded_size = RDBParser::SizeEncoding::TWO_BYTES;
+    } else if (last_bit == 0 && second_last_bit == 1) {
+        encoded_size = RDBParser::SizeEncoding::FOUR_BYTES;
+    } else if (last_bit == 1 && second_last_bit == 0) {
+        encoded_size = RDBParser::SizeEncoding::TEN_BYTES;
+    } else {
+        encoded_size = RDBParser::SizeEncoding::STRING_ENCODING;
+    }
+
+    int num_bytes_to_read = static_cast<int>(encoded_size);
+
+    std::string raw_size;
+    raw_size.push_back(c);
+    for (int i = 1; i < num_bytes_to_read; i++) {
+        fin >> c;
+        raw_size.push_back(c);
+    }
+
+    uint64_t bitmask = (uint64_t(1) << (num_bytes_to_read * 4 - 2)) - 1;
+    uint64_t val;
+    std::istringstream iss(raw_size);
+    iss >> std::hex >> val;
+    return val & bitmask;
 }

@@ -4,6 +4,9 @@
 
 class RDBParser {
    public:
+    static TimeStampedStringMap parse_rdb(std::string const &file_path);
+
+   private:
     enum class Delimiters {
         METADATA = 0xfa,
         DATABASE = 0xfe,
@@ -14,9 +17,11 @@ class RDBParser {
         END_OF_FILE = 0xff
     };
 
-    static TimeStampedStringMap parse_rdb(std::string const &file_path);
-
     static std::pair<std::string, std::string> parse_string(std::ifstream &fin);
 
     static TimeStamp parse_expiry(std::ifstream &fin, RDBParser::Delimiters delim);
+
+    enum class SizeEncoding { TWO_BYTES = 2, FOUR_BYTES = 4, TEN_BYTES = 10, STRING_ENCODING = 2 };
+
+    static uint64_t parse_size_encoding(std::ifstream &fin);
 };
