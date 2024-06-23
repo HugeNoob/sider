@@ -6,6 +6,7 @@
 #include "commands.h"
 #include "logger.h"
 #include "message_parser.h"
+#include "storage_commands.h"
 #include "utils.h"
 
 int Handler::handle_client(int client_socket, Server &server) {
@@ -41,18 +42,9 @@ int Handler::handle_client(int client_socket, Server &server) {
             type = cmd_ptr->get_type();
 
             // At some point we must distinguish these anyway, unless we blindly pass all information
-            if (type == CommandType::Set) {
-                auto setCommandPtr = std::static_pointer_cast<SetCommand>(cmd_ptr);
-                setCommandPtr->set_store_ref(store);
-            } else if (type == CommandType::Get) {
-                auto getCommandPtr = std::static_pointer_cast<GetCommand>(cmd_ptr);
-                getCommandPtr->set_store_ref(store);
-            } else if (type == CommandType::Keys) {
-                auto keysCommandPtr = std::static_pointer_cast<KeysCommand>(cmd_ptr);
-                keysCommandPtr->set_store_ref(store);
-            } else if (type == CommandType::Type) {
-                auto typeCommandPtr = std::static_pointer_cast<TypeCommand>(cmd_ptr);
-                typeCommandPtr->set_store_ref(store);
+            if (StorageCommand *storage_cmd = dynamic_cast<StorageCommand *>(cmd_ptr.get())) {
+                auto storageCommandPtr = std::static_pointer_cast<StorageCommand>(cmd_ptr);
+                storageCommandPtr->set_store_ref(store);
             }
 
             cmd_ptr->execute(server_info);

@@ -61,38 +61,6 @@ class EchoCommand : public Command {
     std::string echo_msg;
 };
 
-class SetCommand : public Command {
-   public:
-    SetCommand(std::string const &key, std::string const &value, TimeStamp expire_time);
-
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
-
-    void execute(ServerInfo &server_info) override;
-
-    void set_store_ref(TimeStampedStringMap &store);
-
-   private:
-    std::string key;
-    std::string value;
-    TimeStamp expire_time;
-    TimeStampedStringMap *store_ref;
-};
-
-class GetCommand : public Command {
-   public:
-    GetCommand(std::string const &key);
-
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
-
-    void execute(ServerInfo &server_info) override;
-
-    void set_store_ref(TimeStampedStringMap &store);
-
-   private:
-    std::string key;
-    TimeStampedStringMap *store_ref;
-};
-
 class InfoCommand : public Command {
    public:
     InfoCommand();
@@ -153,40 +121,6 @@ class ConfigGetCommand : public Command {
 
    private:
     std::vector<std::string> params;
-};
-
-class KeysCommand : public Command {
-   public:
-    KeysCommand(std::string const &pattern);
-
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
-
-    void execute(ServerInfo &server_info) override;
-
-    void set_store_ref(TimeStampedStringMap &store);
-
-   private:
-    std::string pattern;
-    TimeStampedStringMap *store_ref;
-
-    bool match(std::string const &target, std::string const &pattern);
-};
-
-class TypeCommand : public Command {
-   public:
-    TypeCommand(std::string const &key);
-
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
-
-    void execute(ServerInfo &server_info) override;
-
-    void set_store_ref(TimeStampedStringMap &store);
-
-   private:
-    static std::string missing_key_type;
-
-    TimeStampedStringMap *store_ref;
-    std::string key;
 };
 
 void propagate_command(RESPMessage const &command, ServerInfo &server_info);

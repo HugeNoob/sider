@@ -8,6 +8,7 @@ set(SOURCE_FILES
     src/handler.cpp
     src/message_parser.cpp 
     src/commands.cpp 
+    src/storage_commands.cpp
     src/logger.cpp
     src/rdb_parser.cpp
 )
