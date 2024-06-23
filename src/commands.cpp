@@ -63,6 +63,9 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
     } else if (command == "KEYS") {
         LOG("HANDLING case 10 master receives KEYS");
         return KeysCommand::parse(decoded_msg);
+    } else if (command == "TYPE") {
+        LOG("Handling case 11 master receives TYPE");
+        return TypeCommand::parse(decoded_msg);
     }
 
     LOG("Handling else case: Do nothing");
@@ -225,13 +228,6 @@ void PsyncCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-void propagate_command(RESPMessage const &command, ServerInfo &server_info) {
-    for (int replica : server_info.replication_info.replica_connections) {
-        send(replica, command.c_str(), command.size(), 0);
-    }
-    server_info.bytes_propagated += command.size();
-}
-
 WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed,
                          std::chrono::steady_clock::time_point const &start)
     : timeout_milliseconds(timeout_milliseconds), responses_needed(responses_needed), start(start) {
@@ -351,4 +347,44 @@ void KeysCommand::execute(ServerInfo &server_info) {
 
 bool KeysCommand::match(std::string const &target, std::string const &pattern) {
     return target.compare(0, pattern.size(), pattern) == 0;
+}
+
+TypeCommand::TypeCommand(std::string const &key) : key(key) {
+    this->type = CommandType::Type;
+}
+
+std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string("none");
+
+CommandPtr TypeCommand::parse(DecodedMessage const &decoded__msg) {
+    return std::make_shared<TypeCommand>(decoded__msg[1]);
+}
+
+void TypeCommand::execute(ServerInfo &server_info) {
+    RESPMessage message;
+    if (this->store_ref->find(this->key) == this->store_ref->end()) {
+        message = TypeCommand::missing_key_type;
+    } else {
+        bool expired = this->store_ref->at(this->key).second.has_value() &&
+                       std::chrono::system_clock::now() >= this->store_ref->at(this->key).second.value();
+
+        if (expired) {
+            this->store_ref->erase(this->store_ref->find(this->key));
+            message = TypeCommand::missing_key_type;
+        } else {
+            // Only string values are supported for now
+            message = MessageParser::encode_simple_string("string");
+        }
+    }
+    send(this->client_socket, message.c_str(), message.size(), 0);
+}
+
+void TypeCommand::set_store_ref(TimeStampedStringMap &store) {
+    this->store_ref = &store;
+}
+
+void propagate_command(RESPMessage const &command, ServerInfo &server_info) {
+    for (int replica : server_info.replication_info.replica_connections) {
+        send(replica, command.c_str(), command.size(), 0);
+    }
+    server_info.bytes_propagated += command.size();
 }

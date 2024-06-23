@@ -50,6 +50,9 @@ int Handler::handle_client(int client_socket, Server &server) {
             } else if (type == CommandType::Keys) {
                 auto keysCommandPtr = std::static_pointer_cast<KeysCommand>(cmd_ptr);
                 keysCommandPtr->set_store_ref(store);
+            } else if (type == CommandType::Type) {
+                auto typeCommandPtr = std::static_pointer_cast<TypeCommand>(cmd_ptr);
+                typeCommandPtr->set_store_ref(store);
             }
 
             cmd_ptr->execute(server_info);

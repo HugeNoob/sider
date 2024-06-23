@@ -20,7 +20,7 @@ class CommandInvalidArgsError : public std::runtime_error {
     CommandInvalidArgsError(std::string const &error_msg);
 };
 
-enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys };
+enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys, Type };
 
 class Command;
 using CommandPtr = std::shared_ptr<Command>;
@@ -170,6 +170,23 @@ class KeysCommand : public Command {
     TimeStampedStringMap *store_ref;
 
     bool match(std::string const &target, std::string const &pattern);
+};
+
+class TypeCommand : public Command {
+   public:
+    TypeCommand(std::string const &key);
+
+    static CommandPtr parse(DecodedMessage const &decoded_msg);
+
+    void execute(ServerInfo &server_info) override;
+
+    void set_store_ref(TimeStampedStringMap &store);
+
+   private:
+    static std::string missing_key_type;
+
+    TimeStampedStringMap *store_ref;
+    std::string key;
 };
 
 void propagate_command(RESPMessage const &command, ServerInfo &server_info);
