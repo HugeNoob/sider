@@ -11,6 +11,7 @@ set(SOURCE_FILES
     src/storage_commands.cpp
     src/logger.cpp
     src/rdb_parser.cpp
+    src/storage.cpp
 )
 
 set(CMAKE_CXX_STANDARD 23) # Enable the C++23 standard

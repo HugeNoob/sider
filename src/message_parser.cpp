@@ -123,6 +123,11 @@ RESPMessage MessageParser::encode_simple_error(std::string const &message) {
     return "-" + message + DELIM;
 }
 
+RESPMessage MessageParser::encode_stream(Stream stream) {
+    // TODO
+    return "stream";
+}
+
 std::string hexToBytes(std::string const &s) {
     std::string res;
     for (size_t i = 0; i < s.size(); i += 2) {

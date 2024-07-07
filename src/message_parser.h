@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "storage.h"
+
 std::vector<std::string> split(std::string s, std::string const &delimiter);
 
 std::string hexToBytes(std::string const &s);
@@ -23,6 +25,7 @@ class MessageParser {
     static RESPMessage encode_rdb_file(std::string const &message);
     static RESPMessage encode_integer(int num);
     static RESPMessage encode_simple_error(std::string const &message);
+    static RESPMessage encode_stream(Stream stream);
 };
 
 const RESPMessage null_bulk_string = "$-1\r\n";
