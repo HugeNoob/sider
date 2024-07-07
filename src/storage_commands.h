@@ -8,10 +8,10 @@
 */
 class StorageCommand : public Command {
    public:
-    void set_store_ref(TimeStampedStringMap &store);
+    void set_store_ref(StoragePtr storage_ptr);
 
    protected:
-    TimeStampedStringMap *store_ref;
+    StoragePtr storage_ptr;
 };
 
 class SetCommand : public StorageCommand {

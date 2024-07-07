@@ -46,9 +46,10 @@ void print_file(std::string const &file_path) {
 }
 
 // Local testing: ./spawn_redis_server.sh --dir "/home/lingxi/codecrafters-redis-cpp" --dbfilename "dump.rdb"
-TimeStampedStringMap RDBParser::parse_rdb(std::string const &file_path) {
+StoragePtr RDBParser::parse_rdb(std::string const &file_path) {
     LOG("parsing rdb at: " + file_path);
 
+    StoragePtr storage_ptr = std::make_shared<Storage>();
     TimeStampedStringMap extracted_kvt;
 
     // Assume rdb is empty if file does not exist
@@ -106,12 +107,12 @@ TimeStampedStringMap RDBParser::parse_rdb(std::string const &file_path) {
                 // Get kv pair associated with this expiry
                 if (c == static_cast<uint8_t>(RDBParser::Delimiters::START_OF_STRING)) {
                     std::pair<std::string, std::string> kv = RDBParser::parse_string(fin);
-                    extracted_kvt[kv.first] = {kv.second, ts};
+                    storage_ptr->set(kv.first, StringValue(kv.second, ts));
                 }
             } else if (c == static_cast<uint8_t>(RDBParser::Delimiters::START_OF_STRING)) {
                 // This key-value pair does not have an expiry
                 std::pair<std::string, std::string> kv = RDBParser::parse_string(fin);
-                extracted_kvt[kv.first] = {kv.second, std::nullopt};
+                storage_ptr->set(kv.first, StringValue(kv.second, std::nullopt));
             }
         }
     }
@@ -126,7 +127,7 @@ TimeStampedStringMap RDBParser::parse_rdb(std::string const &file_path) {
 
     fin.close();
 
-    return extracted_kvt;
+    return storage_ptr;
 }
 
 std::pair<std::string, std::string> RDBParser::parse_string(std::ifstream &fin) {

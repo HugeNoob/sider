@@ -96,8 +96,8 @@ int Server::get_server_fd() const {
     return this->server_fd;
 }
 
-TimeStampedStringMap &Server::get_store() {
-    return this->store;
+StoragePtr Server::get_storage_ptr() {
+    return this->storage_ptr;
 }
 
 // Handshake steps:
@@ -184,7 +184,9 @@ void Server::start() {
     LOG("starting server...");
 
     if (this->server_info.dbfilename != "") {
-        this->store = RDBParser::parse_rdb(this->server_info.dir + '/' + this->server_info.dbfilename);
+        this->storage_ptr = RDBParser::parse_rdb(this->server_info.dir + '/' + this->server_info.dbfilename);
+    } else {
+        this->storage_ptr = std::make_shared<Storage>();
     }
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);

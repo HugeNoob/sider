@@ -6,12 +6,13 @@
 #include "commands.h"
 #include "logger.h"
 #include "message_parser.h"
+#include "storage.h"
 #include "storage_commands.h"
 #include "utils.h"
 
 int Handler::handle_client(int client_socket, Server &server) {
     ServerInfo &server_info = server.get_server_info();
-    TimeStampedStringMap &store = server.get_store();
+    StoragePtr storage_ptr = server.get_storage_ptr();
 
     std::vector<char> buf(1024);
     int recv_bytes = recv(client_socket, buf.data(), 1024, 0);
@@ -44,7 +45,7 @@ int Handler::handle_client(int client_socket, Server &server) {
             // At some point we must distinguish these anyway, unless we blindly pass all information
             if (StorageCommand *storage_cmd = dynamic_cast<StorageCommand *>(cmd_ptr.get())) {
                 auto storageCommandPtr = std::static_pointer_cast<StorageCommand>(cmd_ptr);
-                storageCommandPtr->set_store_ref(store);
+                storageCommandPtr->set_store_ref(storage_ptr);
             }
 
             cmd_ptr->execute(server_info);

@@ -17,9 +17,6 @@ class StorageValue {
     StorageValue(T const& value, TimeStamp const& expiry) : value(value), expiry(expiry) {
     }
 
-    StorageValue(T&& value, TimeStamp const& expiry) : value(std::move(value)), expiry(expiry) {
-    }
-
     T get_value() const {
         return this->value;
     };
@@ -35,7 +32,7 @@ class StorageValue {
 
 using StringValue = StorageValue<std::string>;
 
-using Stream = std::vector<std::pair<std::string, std::variant<int, std::string>>>;
+using Stream = std::vector<std::pair<std::string, std::string>>;
 using StreamValue = StorageValue<Stream>;
 
 using StorageValueVariants = std::variant<StringValue, StreamValue>;
@@ -48,8 +45,6 @@ class Storage {
     using Store = std::unordered_map<std::string, std::variant<StringValue, StreamValue>>;
     using StoreView = Store const&;
 
-    static StoragePtr make_storage();
-
     StorageValueVariants get(std::string const& key);
 
     void set(std::string const& key, StorageValueVariants&& value);
@@ -60,6 +55,4 @@ class Storage {
 
    private:
     Store store;
-
-    Storage() = default;
 };

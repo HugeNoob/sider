@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "storage.h"
 #include "utils.h"
 
 struct ServerInfo {
@@ -44,12 +45,12 @@ class Server {
 
     ServerInfo &get_server_info();
     int get_server_fd() const;
-    TimeStampedStringMap &get_store();
+    StoragePtr get_storage_ptr();
 
    private:
     ServerInfo server_info;
     int server_fd;
-    TimeStampedStringMap store;
+    StoragePtr storage_ptr;
 
     void start();
 

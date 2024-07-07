@@ -1,10 +1,5 @@
 #include "storage.h"
 
-StoragePtr Storage::make_storage() {
-    struct make_shared_enabler : public Storage {};
-    return std::make_shared<make_shared_enabler>();
-}
-
 StorageValueVariants Storage::get(std::string const& key) {
     auto it = this->store.find(key);
     if (it == this->store.end()) {

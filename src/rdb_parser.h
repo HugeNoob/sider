@@ -1,10 +1,11 @@
 #pragma once
 
+#include "storage.h"
 #include "utils.h"
 
 class RDBParser {
    public:
-    static TimeStampedStringMap parse_rdb(std::string const &file_path);
+    static StoragePtr parse_rdb(std::string const &file_path);
 
    private:
     enum class Delimiters {

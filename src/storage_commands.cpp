@@ -2,8 +2,8 @@
 
 #include <sys/socket.h>
 
-void StorageCommand::set_store_ref(TimeStampedStringMap &store) {
-    this->store_ref = &store;
+void StorageCommand::set_store_ref(StoragePtr storage_ptr) {
+    this->storage_ptr = storage_ptr;
 }
 
 SetCommand::SetCommand(std::string const &key, std::string const &value, TimeStamp expire_time)
@@ -28,7 +28,7 @@ void SetCommand::execute(ServerInfo &server_info) {
         return;
     }
 
-    store_ref->insert({this->key, {this->value, this->expire_time}});
+    this->storage_ptr->set(this->key, StringValue(this->value, this->expire_time));
 
     // Replicas should not respond to master during SET propagation
     if (client_socket != server_info.replication_info.master_fd) {
@@ -47,19 +47,28 @@ CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
 
 void GetCommand::execute(ServerInfo &server_info) {
     RESPMessage message;
-    if (this->store_ref->find(this->key) == this->store_ref->end()) {
-        message = null_bulk_string;
-    } else {
-        bool expired = this->store_ref->at(this->key).second.has_value() &&
-                       std::chrono::system_clock::now() >= this->store_ref->at(this->key).second.value();
 
-        if (expired) {
-            this->store_ref->erase(this->store_ref->find(this->key));
-            message = null_bulk_string;
-        } else {
-            message = MessageParser::encode_bulk_string(this->store_ref->at(this->key).first);
-        }
+    try {
+        StorageValueVariants val = this->storage_ptr->get(this->key);
+        message = std::visit(
+            [](const auto &v) -> RESPMessage {
+                using T = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<T, StringValue>) {
+                    return MessageParser::encode_bulk_string(v.get_value());
+                } else if constexpr (std::is_same_v<T, StreamValue>) {
+                    return MessageParser::encode_stream(v.get_value());
+                } else {
+                    static_assert(std::is_same_v<T, StringValue> || std::is_same_v<T, StreamValue>,
+                                  "Unhandled type in variant");
+                    throw std::runtime_error("Unreachable");
+                }
+            },
+            val);
+    } catch (std::out_of_range e) {
+        // Catches missing and expired keys
+        message = null_bulk_string;
     }
+
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
@@ -76,16 +85,11 @@ CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
 
 void KeysCommand::execute(ServerInfo &server_info) {
     std::vector<std::string> matching_values;
-    for (auto [k, p] : *(this->store_ref)) {
-        auto [v, ts] = p;
+    Storage::StoreView store_view = this->storage_ptr->get_view();
 
-        bool expired = ts.has_value() && std::chrono::system_clock::now() >= ts.value();
-        if (expired) {
-            this->store_ref->erase(this->store_ref->find(v));
-            continue;
-        }
-
-        if (KeysCommand::match(k, this->pattern)) {
+    for (auto [k, p] : store_view) {
+        // Also check if key has expired
+        if (this->storage_ptr->check_validity(k) && KeysCommand::match(k, this->pattern)) {
             matching_values.push_back(k);
         }
     }
@@ -110,19 +114,13 @@ CommandPtr TypeCommand::parse(DecodedMessage const &decoded__msg) {
 
 void TypeCommand::execute(ServerInfo &server_info) {
     RESPMessage message;
-    if (this->store_ref->find(this->key) == this->store_ref->end()) {
+
+    if (!this->storage_ptr->check_validity(this->key)) {
         message = TypeCommand::missing_key_type;
     } else {
-        bool expired = this->store_ref->at(this->key).second.has_value() &&
-                       std::chrono::system_clock::now() >= this->store_ref->at(this->key).second.value();
-
-        if (expired) {
-            this->store_ref->erase(this->store_ref->find(this->key));
-            message = TypeCommand::missing_key_type;
-        } else {
-            // Only string values are supported for now
-            message = MessageParser::encode_simple_string("string");
-        }
+        // Only string values are supported for now
+        message = MessageParser::encode_simple_string("string");
     }
+
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
