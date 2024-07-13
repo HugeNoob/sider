@@ -118,9 +118,54 @@ void TypeCommand::execute(ServerInfo &server_info) {
     if (!this->storage_ptr->check_validity(this->key)) {
         message = TypeCommand::missing_key_type;
     } else {
-        // Only string values are supported for now
-        message = MessageParser::encode_simple_string("string");
+        StorageValueVariants val = this->storage_ptr->get(this->key);
+        message = std::visit(
+            [](const auto &v) -> RESPMessage {
+                using T = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<T, StringValue>) {
+                    return MessageParser::encode_simple_string("string");
+                } else if constexpr (std::is_same_v<T, StreamValue>) {
+                    return MessageParser::encode_simple_string("stream");
+                } else {
+                    static_assert(std::is_same_v<T, StringValue> || std::is_same_v<T, StreamValue>,
+                                  "Unhandled type in variant");
+                    throw std::runtime_error("Unreachable");
+                }
+            },
+            val);
     }
 
+    send(this->client_socket, message.c_str(), message.size(), 0);
+}
+
+XAddCommand::XAddCommand(std::string const &stream_key, std::string const &stream_id,
+                         std::vector<std::pair<std::string, std::string>> &stream)
+    : stream_key(stream_key), stream_id(stream_id), stream(stream) {
+    this->type = CommandType::XAdd;
+}
+
+CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
+    // eg. XADD stream_key stream_id temperature 36 humidity 95
+    std::string stream_key = decoded_msg[1];
+    std::string stream_id = decoded_msg[2];
+
+    int numPairs = decoded_msg.size() - 3;
+    if (numPairs & 1) {
+        throw CommandInvalidArgsError("Invalid number of key value pair inputs to XAdd command");
+    }
+
+    Stream stream;
+    stream.reserve(decoded_msg.size() - 2);
+    for (int i = 3; i < decoded_msg.size(); i += 2) {
+        stream.push_back({decoded_msg[i], decoded_msg[i + 1]});
+    }
+
+    return std::make_shared<XAddCommand>(stream_key, stream_id, stream);
+}
+
+void XAddCommand::execute(ServerInfo &server_info) {
+    this->storage_ptr->set(this->stream_key, StorageValue(this->stream, std::nullopt));
+
+    RESPMessage message = MessageParser::encode_bulk_string(this->stream_id);
     send(this->client_socket, message.c_str(), message.size(), 0);
 }

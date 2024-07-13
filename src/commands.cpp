@@ -67,6 +67,9 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
     } else if (command == "TYPE") {
         LOG("Handling case 11 master receives TYPE");
         return TypeCommand::parse(decoded_msg);
+    } else if (command == "XADD") {
+        LOG("Handling case 12 master receives XADD");
+        return XAddCommand::parse(decoded_msg);
     }
 
     LOG("Handling else case: Do nothing");

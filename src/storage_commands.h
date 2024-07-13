@@ -1,6 +1,7 @@
 #pragma once
 
 #include "commands.h"
+#include "storage.h"
 
 /*
     These commands require interaction with store object for key-value data.
@@ -66,4 +67,19 @@ class TypeCommand : public StorageCommand {
     static std::string missing_key_type;
 
     std::string key;
+};
+
+class XAddCommand : public StorageCommand {
+   public:
+    XAddCommand(std::string const &stream_key, std::string const &stream_id,
+                std::vector<std::pair<std::string, std::string>> &stream);
+
+    static CommandPtr parse(DecodedMessage const &decoded_msg);
+
+    void execute(ServerInfo &server_info) override;
+
+   private:
+    std::string stream_key;
+    std::string stream_id;
+    Stream stream;
 };
