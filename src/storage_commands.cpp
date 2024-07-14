@@ -2,8 +2,7 @@
 
 #include <sys/socket.h>
 
-StorageCommand::StorageCommand(CommandType type) : Command(type) {
-}
+StorageCommand::StorageCommand(CommandType type) : Command(type) {}
 
 void StorageCommand::set_store_ref(StoragePtr storage_ptr) {
     this->storage_ptr = storage_ptr;
@@ -13,8 +12,7 @@ SetCommand::SetCommand(std::string &&key, std::string &&value, TimeStamp &&expir
     : StorageCommand(CommandType::Set),
       key(std::move(key)),
       value(std::move(value)),
-      expire_time(std::move(expire_time)) {
-}
+      expire_time(std::move(expire_time)) {}
 
 CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
@@ -45,8 +43,7 @@ void SetCommand::execute(ServerInfo &server_info) {
     }
 }
 
-GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), key(std::move(key)) {
-}
+GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), key(std::move(key)) {}
 
 CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
@@ -80,8 +77,7 @@ void GetCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-KeysCommand::KeysCommand(std::string &&pattern) : StorageCommand(CommandType::Keys), pattern(std::move(pattern)) {
-}
+KeysCommand::KeysCommand(std::string &&pattern) : StorageCommand(CommandType::Keys), pattern(std::move(pattern)) {}
 
 CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
     std::string pattern = decoded_msg[1];
@@ -109,8 +105,7 @@ bool KeysCommand::match(std::string const &target, std::string const &pattern) {
     return target.compare(0, pattern.size(), pattern) == 0;
 }
 
-TypeCommand::TypeCommand(std::string &&key) : StorageCommand(CommandType::Type), key(std::move(key)) {
-}
+TypeCommand::TypeCommand(std::string &&key) : StorageCommand(CommandType::Type), key(std::move(key)) {}
 
 std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string("none");
 
@@ -150,8 +145,7 @@ XAddCommand::XAddCommand(std::string &&stream_key, std::string &&stream_id,
     : StorageCommand(CommandType::XAdd),
       stream_key(std::move(stream_key)),
       stream_id(std::move(stream_id)),
-      stream(std::move(stream)) {
-}
+      stream(std::move(stream)) {}
 
 CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
     // eg. XADD stream_key stream_id temperature 36 humidity 95

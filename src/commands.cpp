@@ -9,13 +9,11 @@
 #include "logger.h"
 #include "storage_commands.h"
 
-CommandParseError::CommandParseError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {
-}
+CommandParseError::CommandParseError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {}
 
-CommandInvalidArgsError::CommandInvalidArgsError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)){};
+CommandInvalidArgsError::CommandInvalidArgsError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {}
 
-Command::Command(CommandType type) : type(type) {
-}
+Command::Command(CommandType type) : type(type) {}
 
 CommandType Command::get_type() const {
     return this->type;
@@ -80,8 +78,7 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
     throw CommandParseError("Unknown command during parsing");
 }
 
-PingCommand::PingCommand() : Command(CommandType::Ping) {
-}
+PingCommand::PingCommand() : Command(CommandType::Ping) {}
 
 CommandPtr PingCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<PingCommand>();
@@ -94,8 +91,7 @@ void PingCommand::execute(ServerInfo &server_info) {
     }
 }
 
-EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), echo_msg(std::move(echo_msg)) {
-}
+EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), echo_msg(std::move(echo_msg)) {}
 
 CommandPtr EchoCommand::parse(DecodedMessage const &decoded_msg) {
     std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
@@ -107,8 +103,7 @@ void EchoCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, encoded_echo_msg.c_str(), encoded_echo_msg.size(), 0);
 }
 
-InfoCommand::InfoCommand() : Command(CommandType::Info) {
-}
+InfoCommand::InfoCommand() : Command(CommandType::Info) {}
 
 CommandPtr InfoCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<InfoCommand>();
@@ -123,8 +118,7 @@ void InfoCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-ReplconfCommand::ReplconfCommand() : Command(CommandType::Replconf) {
-}
+ReplconfCommand::ReplconfCommand() : Command(CommandType::Replconf) {}
 
 CommandPtr ReplconfCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<ReplconfCommand>();
@@ -147,8 +141,7 @@ std::string PsyncCommand::empty_rdb_hardcoded =
 
 std::string PsyncCommand::empty_rdb_in_bytes = hexToBytes(PsyncCommand::empty_rdb_hardcoded);
 
-PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {
-}
+PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {}
 
 CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<PsyncCommand>();
@@ -170,8 +163,7 @@ WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed, std::ch
     : Command(CommandType::Wait),
       timeout_milliseconds(timeout_milliseconds),
       responses_needed(responses_needed),
-      start(std::move(start)) {
-}
+      start(std::move(start)) {}
 
 CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
     int timeout_milliseconds = std::stoi(decoded_msg[2]);
@@ -220,8 +212,7 @@ void WaitCommand::execute(ServerInfo &server_info) {
 }
 
 ConfigGetCommand::ConfigGetCommand(std::vector<std::string> &&params)
-    : Command(CommandType::ConfigGet), params(std::move(params)) {
-}
+    : Command(CommandType::ConfigGet), params(std::move(params)) {}
 
 CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
     std::vector<std::string> params;

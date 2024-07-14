@@ -14,8 +14,7 @@ using TimeStamp = std::optional<std::chrono::time_point<std::chrono::system_cloc
 template <typename T>
 class StorageValue {
    public:
-    StorageValue(T const& value, TimeStamp const& expiry) : value(value), expiry(expiry) {
-    }
+    StorageValue(T const& value, TimeStamp const& expiry) : value(value), expiry(expiry) {}
 
     T get_value() const {
         return this->value;
