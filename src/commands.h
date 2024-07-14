@@ -12,12 +12,12 @@
 
 class CommandParseError : public std::runtime_error {
    public:
-    CommandParseError(std::string const &error_msg);
+    CommandParseError(std::string &&error_msg);
 };
 
 class CommandInvalidArgsError : public std::runtime_error {
    public:
-    CommandInvalidArgsError(std::string const &error_msg);
+    CommandInvalidArgsError(std::string &&error_msg);
 };
 
 enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys, Type, XAdd };
@@ -28,6 +28,8 @@ using CommandPtr = std::shared_ptr<Command>;
 class Command {
    public:
     static CommandPtr parse(DecodedMessage const &decoded_msg);
+
+    Command(CommandType type);
 
     CommandType get_type() const;
 
@@ -51,7 +53,7 @@ class PingCommand : public Command {
 
 class EchoCommand : public Command {
    public:
-    EchoCommand(std::string const &echo_msg);
+    EchoCommand(std::string &&echo_msg);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 
@@ -99,7 +101,7 @@ class PsyncCommand : public Command {
 
 class WaitCommand : public Command {
    public:
-    WaitCommand(int timeout_milliseconds, int responses_needed, std::chrono::steady_clock::time_point const &start);
+    WaitCommand(int timeout_milliseconds, int responses_needed, std::chrono::steady_clock::time_point &&start);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 
@@ -113,7 +115,7 @@ class WaitCommand : public Command {
 
 class ConfigGetCommand : public Command {
    public:
-    ConfigGetCommand(std::vector<std::string> const &params);
+    ConfigGetCommand(std::vector<std::string> &&params);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 

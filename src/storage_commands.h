@@ -9,6 +9,8 @@
 */
 class StorageCommand : public Command {
    public:
+    StorageCommand(CommandType type);
+
     void set_store_ref(StoragePtr storage_ptr);
 
    protected:
@@ -17,7 +19,7 @@ class StorageCommand : public Command {
 
 class SetCommand : public StorageCommand {
    public:
-    SetCommand(std::string const &key, std::string const &value, TimeStamp expire_time);
+    SetCommand(std::string &&key, std::string &&value, TimeStamp &&expire_time);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 
@@ -31,7 +33,7 @@ class SetCommand : public StorageCommand {
 
 class GetCommand : public StorageCommand {
    public:
-    GetCommand(std::string const &key);
+    GetCommand(std::string &&key);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 
@@ -43,7 +45,7 @@ class GetCommand : public StorageCommand {
 
 class KeysCommand : public StorageCommand {
    public:
-    KeysCommand(std::string const &pattern);
+    KeysCommand(std::string &&pattern);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 
@@ -57,7 +59,7 @@ class KeysCommand : public StorageCommand {
 
 class TypeCommand : public StorageCommand {
    public:
-    TypeCommand(std::string const &key);
+    TypeCommand(std::string &&key);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 
@@ -71,8 +73,8 @@ class TypeCommand : public StorageCommand {
 
 class XAddCommand : public StorageCommand {
    public:
-    XAddCommand(std::string const &stream_key, std::string const &stream_id,
-                std::vector<std::pair<std::string, std::string>> &stream);
+    XAddCommand(std::string &&stream_key, std::string &&stream_id,
+                std::vector<std::pair<std::string, std::string>> &&stream);
 
     static CommandPtr parse(DecodedMessage const &decoded_msg);
 

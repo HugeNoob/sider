@@ -78,7 +78,7 @@ bool ServerInfo::is_replica() const {
     return this->replication_info._is_replica;
 }
 
-Server::Server(ServerInfo const &server_info) : server_info(server_info) {
+Server::Server(ServerInfo &&server_info) : server_info(std::move(server_info)) {
     this->start();
 }
 

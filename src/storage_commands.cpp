@@ -2,23 +2,31 @@
 
 #include <sys/socket.h>
 
+StorageCommand::StorageCommand(CommandType type) : Command(type) {
+}
+
 void StorageCommand::set_store_ref(StoragePtr storage_ptr) {
     this->storage_ptr = storage_ptr;
 }
 
-SetCommand::SetCommand(std::string const &key, std::string const &value, TimeStamp expire_time)
-    : key(key), value(value), expire_time(expire_time) {
-    this->type = CommandType::Set;
+SetCommand::SetCommand(std::string &&key, std::string &&value, TimeStamp &&expire_time)
+    : StorageCommand(CommandType::Set),
+      key(std::move(key)),
+      value(std::move(value)),
+      expire_time(std::move(expire_time)) {
 }
 
 CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
+    std::string key = decoded_msg[1];
+    std::string value = decoded_msg[2];
+
     TimeStamp expire_time;
     if (decoded_msg.size() > 3) {
         expire_time = std::chrono::system_clock::now() + std::chrono::milliseconds(stoi(decoded_msg.back()));
     } else {
         expire_time = std::nullopt;
     }
-    return std::make_shared<SetCommand>(decoded_msg[1], decoded_msg[2], expire_time);
+    return std::make_shared<SetCommand>(std::move(key), std::move(value), std::move(expire_time));
 }
 
 void SetCommand::execute(ServerInfo &server_info) {
@@ -37,12 +45,12 @@ void SetCommand::execute(ServerInfo &server_info) {
     }
 }
 
-GetCommand::GetCommand(std::string const &key) : key(key) {
-    this->type = CommandType::Get;
+GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), key(std::move(key)) {
 }
 
 CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
-    return std::make_shared<GetCommand>(decoded_msg[1]);
+    std::string key = decoded_msg[1];
+    return std::make_shared<GetCommand>(std::move(key));
 }
 
 void GetCommand::execute(ServerInfo &server_info) {
@@ -72,15 +80,14 @@ void GetCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-KeysCommand::KeysCommand(std::string const &pattern) : pattern(pattern) {
-    this->type = CommandType::Keys;
+KeysCommand::KeysCommand(std::string &&pattern) : StorageCommand(CommandType::Keys), pattern(std::move(pattern)) {
 }
 
 CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
     std::string pattern = decoded_msg[1];
     if (pattern.back() == '*') pattern.pop_back();
 
-    return std::make_shared<KeysCommand>(pattern);
+    return std::make_shared<KeysCommand>(std::move(pattern));
 }
 
 void KeysCommand::execute(ServerInfo &server_info) {
@@ -102,14 +109,14 @@ bool KeysCommand::match(std::string const &target, std::string const &pattern) {
     return target.compare(0, pattern.size(), pattern) == 0;
 }
 
-TypeCommand::TypeCommand(std::string const &key) : key(key) {
-    this->type = CommandType::Type;
+TypeCommand::TypeCommand(std::string &&key) : StorageCommand(CommandType::Type), key(std::move(key)) {
 }
 
 std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string("none");
 
-CommandPtr TypeCommand::parse(DecodedMessage const &decoded__msg) {
-    return std::make_shared<TypeCommand>(decoded__msg[1]);
+CommandPtr TypeCommand::parse(DecodedMessage const &decoded_msg) {
+    std::string key = decoded_msg[1];
+    return std::make_shared<TypeCommand>(std::move(key));
 }
 
 void TypeCommand::execute(ServerInfo &server_info) {
@@ -138,10 +145,12 @@ void TypeCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-XAddCommand::XAddCommand(std::string const &stream_key, std::string const &stream_id,
-                         std::vector<std::pair<std::string, std::string>> &stream)
-    : stream_key(stream_key), stream_id(stream_id), stream(stream) {
-    this->type = CommandType::XAdd;
+XAddCommand::XAddCommand(std::string &&stream_key, std::string &&stream_id,
+                         std::vector<std::pair<std::string, std::string>> &&stream)
+    : StorageCommand(CommandType::XAdd),
+      stream_key(std::move(stream_key)),
+      stream_id(std::move(stream_id)),
+      stream(std::move(stream)) {
 }
 
 CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
@@ -160,7 +169,7 @@ CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
         stream.push_back({decoded_msg[i], decoded_msg[i + 1]});
     }
 
-    return std::make_shared<XAddCommand>(stream_key, stream_id, stream);
+    return std::make_shared<XAddCommand>(std::move(stream_key), std::move(stream_id), std::move(stream));
 }
 
 void XAddCommand::execute(ServerInfo &server_info) {

@@ -9,9 +9,13 @@
 #include "logger.h"
 #include "storage_commands.h"
 
-CommandParseError::CommandParseError(std::string const &error_msg) : std::runtime_error(error_msg){};
+CommandParseError::CommandParseError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {
+}
 
-CommandInvalidArgsError::CommandInvalidArgsError(std::string const &error_msg) : std::runtime_error(error_msg){};
+CommandInvalidArgsError::CommandInvalidArgsError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)){};
+
+Command::Command(CommandType type) : type(type) {
+}
 
 CommandType Command::get_type() const {
     return this->type;
@@ -76,8 +80,7 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
     throw CommandParseError("Unknown command during parsing");
 }
 
-PingCommand::PingCommand() {
-    this->type = CommandType::Ping;
+PingCommand::PingCommand() : Command(CommandType::Ping) {
 }
 
 CommandPtr PingCommand::parse(DecodedMessage const &decoded_msg) {
@@ -91,13 +94,12 @@ void PingCommand::execute(ServerInfo &server_info) {
     }
 }
 
-EchoCommand::EchoCommand(std::string const &echo_msg) : echo_msg(echo_msg) {
-    this->type = CommandType::Echo;
+EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), echo_msg(std::move(echo_msg)) {
 }
 
 CommandPtr EchoCommand::parse(DecodedMessage const &decoded_msg) {
     std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
-    return std::make_shared<EchoCommand>(echo_msg);
+    return std::make_shared<EchoCommand>(std::move(echo_msg));
 }
 
 void EchoCommand::execute(ServerInfo &server_info) {
@@ -105,8 +107,7 @@ void EchoCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, encoded_echo_msg.c_str(), encoded_echo_msg.size(), 0);
 }
 
-InfoCommand::InfoCommand() {
-    this->type = CommandType::Info;
+InfoCommand::InfoCommand() : Command(CommandType::Info) {
 }
 
 CommandPtr InfoCommand::parse(DecodedMessage const &decoded_msg) {
@@ -122,8 +123,7 @@ void InfoCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-ReplconfCommand::ReplconfCommand() {
-    this->type = CommandType::Replconf;
+ReplconfCommand::ReplconfCommand() : Command(CommandType::Replconf) {
 }
 
 CommandPtr ReplconfCommand::parse(DecodedMessage const &decoded_msg) {
@@ -147,8 +147,7 @@ std::string PsyncCommand::empty_rdb_hardcoded =
 
 std::string PsyncCommand::empty_rdb_in_bytes = hexToBytes(PsyncCommand::empty_rdb_hardcoded);
 
-PsyncCommand::PsyncCommand() {
-    this->type = CommandType::Psync;
+PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {
 }
 
 CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
@@ -167,15 +166,18 @@ void PsyncCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed,
-                         std::chrono::steady_clock::time_point const &start)
-    : timeout_milliseconds(timeout_milliseconds), responses_needed(responses_needed), start(start) {
-    this->type = CommandType::Wait;
+WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed, std::chrono::steady_clock::time_point &&start)
+    : Command(CommandType::Wait),
+      timeout_milliseconds(timeout_milliseconds),
+      responses_needed(responses_needed),
+      start(std::move(start)) {
 }
 
 CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
-    return std::make_shared<WaitCommand>(std::stoi(decoded_msg[2]), std::stoi(decoded_msg[1]),
-                                         std::chrono::steady_clock::now());
+    int timeout_milliseconds = std::stoi(decoded_msg[2]);
+    int responses_needed = std::stoi(decoded_msg[1]);
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    return std::make_shared<WaitCommand>(timeout_milliseconds, responses_needed, std::move(start));
 }
 
 void WaitCommand::execute(ServerInfo &server_info) {
@@ -217,8 +219,8 @@ void WaitCommand::execute(ServerInfo &server_info) {
     send(client_socket, message.c_str(), message.size(), 0);
 }
 
-ConfigGetCommand::ConfigGetCommand(std::vector<std::string> const &params) : params(params) {
-    this->type = CommandType::ConfigGet;
+ConfigGetCommand::ConfigGetCommand(std::vector<std::string> &&params)
+    : Command(CommandType::ConfigGet), params(std::move(params)) {
 }
 
 CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
@@ -229,7 +231,7 @@ CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
         params.push_back(decoded_msg[i]);
     }
 
-    return std::make_shared<ConfigGetCommand>(params);
+    return std::make_shared<ConfigGetCommand>(std::move(params));
 }
 
 void ConfigGetCommand::execute(ServerInfo &server_info) {

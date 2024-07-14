@@ -38,7 +38,7 @@ using ServerPtr = std::shared_ptr<Server>;
 
 class Server {
    public:
-    Server(ServerInfo const &server_info);
+    Server(ServerInfo &&server_info);
     ~Server();
 
     void listen();
