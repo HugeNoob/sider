@@ -80,6 +80,7 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
 
 PingCommand::PingCommand() : Command(CommandType::Ping) {}
 
+// Example: PING
 CommandPtr PingCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<PingCommand>();
 }
@@ -93,6 +94,7 @@ void PingCommand::execute(ServerInfo &server_info) {
 
 EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), echo_msg(std::move(echo_msg)) {}
 
+// Example: ECHO ...args
 CommandPtr EchoCommand::parse(DecodedMessage const &decoded_msg) {
     std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
     return std::make_unique<EchoCommand>(std::move(echo_msg));
@@ -105,6 +107,7 @@ void EchoCommand::execute(ServerInfo &server_info) {
 
 InfoCommand::InfoCommand() : Command(CommandType::Info) {}
 
+// Example: INFO replication
 CommandPtr InfoCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<InfoCommand>();
 }
@@ -120,6 +123,13 @@ void InfoCommand::execute(ServerInfo &server_info) {
 
 ReplconfCommand::ReplconfCommand() : Command(CommandType::Replconf) {}
 
+/**
+ * Examples:
+ * REPLCONF listening-port <PORT>
+ * REPLCONF capa psync2
+ *
+ * Both are sent by replica to master during handshake.
+ */
 CommandPtr ReplconfCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<ReplconfCommand>();
 }
@@ -143,6 +153,7 @@ std::string PsyncCommand::empty_rdb_in_bytes = hexToBytes(PsyncCommand::empty_rd
 
 PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {}
 
+// Example: PSYNC ? -1
 CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
     return std::make_unique<PsyncCommand>();
 }
@@ -165,6 +176,11 @@ WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed, std::ch
       responses_needed(responses_needed),
       start(std::move(start)) {}
 
+/**
+ * Example: WAIT <number-of-replica-responses-needed> <timeout>
+ *
+ * WAIT should reply when either condition is met.
+ */
 CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
     int timeout_milliseconds = std::stoi(decoded_msg[2]);
     int responses_needed = std::stoi(decoded_msg[1]);
@@ -214,6 +230,11 @@ void WaitCommand::execute(ServerInfo &server_info) {
 ConfigGetCommand::ConfigGetCommand(std::vector<std::string> &&params)
     : Command(CommandType::ConfigGet), params(std::move(params)) {}
 
+/**
+ * Example: CONFIG GET <param>
+ *
+ * param can be either "dir" or "filename"
+ */
 CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
     std::vector<std::string> params;
 

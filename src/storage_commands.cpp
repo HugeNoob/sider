@@ -14,6 +14,7 @@ SetCommand::SetCommand(std::string &&key, std::string &&value, TimeStamp &&expir
       value(std::move(value)),
       expire_time(std::move(expire_time)) {}
 
+// Example: SET <key> <value>
 CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
     std::string value = decoded_msg[2];
@@ -45,6 +46,7 @@ void SetCommand::execute(ServerInfo &server_info) {
 
 GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), key(std::move(key)) {}
 
+// Example: GET <key>
 CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
     return std::make_unique<GetCommand>(std::move(key));
@@ -79,6 +81,11 @@ void GetCommand::execute(ServerInfo &server_info) {
 
 KeysCommand::KeysCommand(std::string &&pattern) : StorageCommand(CommandType::Keys), pattern(std::move(pattern)) {}
 
+/**
+ * Example: KEYS <pattern>
+ *
+ * <pattern> should be "<some-prefix>*", where some-prefix can also be empty, i.e. "*"
+ */
 CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
     std::string pattern = decoded_msg[1];
     if (pattern.back() == '*') pattern.pop_back();
@@ -109,6 +116,7 @@ TypeCommand::TypeCommand(std::string &&key) : StorageCommand(CommandType::Type),
 
 std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string("none");
 
+// Example: TYPE <key>
 CommandPtr TypeCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
     return std::make_unique<TypeCommand>(std::move(key));
@@ -147,8 +155,13 @@ XAddCommand::XAddCommand(std::string &&stream_key, std::string &&stream_id,
       stream_id(std::move(stream_id)),
       stream(std::move(stream)) {}
 
+/**
+ * Example: XADD <stream_key> <stream_id> <...args>
+ *
+ * ...args should be a variable number of key-value pairs
+ * eg. temperature 60 humidity 100 -> (temperature, 60), (humidity, 100)
+ */
 CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
-    // eg. XADD stream_key stream_id temperature 36 humidity 95
     std::string stream_key = decoded_msg[1];
     std::string stream_id = decoded_msg[2];
 
