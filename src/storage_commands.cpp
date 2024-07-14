@@ -26,7 +26,7 @@ CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
     } else {
         expire_time = std::nullopt;
     }
-    return std::make_shared<SetCommand>(std::move(key), std::move(value), std::move(expire_time));
+    return std::make_unique<SetCommand>(std::move(key), std::move(value), std::move(expire_time));
 }
 
 void SetCommand::execute(ServerInfo &server_info) {
@@ -50,7 +50,7 @@ GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), ke
 
 CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
-    return std::make_shared<GetCommand>(std::move(key));
+    return std::make_unique<GetCommand>(std::move(key));
 }
 
 void GetCommand::execute(ServerInfo &server_info) {
@@ -87,7 +87,7 @@ CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
     std::string pattern = decoded_msg[1];
     if (pattern.back() == '*') pattern.pop_back();
 
-    return std::make_shared<KeysCommand>(std::move(pattern));
+    return std::make_unique<KeysCommand>(std::move(pattern));
 }
 
 void KeysCommand::execute(ServerInfo &server_info) {
@@ -116,7 +116,7 @@ std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string(
 
 CommandPtr TypeCommand::parse(DecodedMessage const &decoded_msg) {
     std::string key = decoded_msg[1];
-    return std::make_shared<TypeCommand>(std::move(key));
+    return std::make_unique<TypeCommand>(std::move(key));
 }
 
 void TypeCommand::execute(ServerInfo &server_info) {
@@ -169,7 +169,7 @@ CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
         stream.push_back({decoded_msg[i], decoded_msg[i + 1]});
     }
 
-    return std::make_shared<XAddCommand>(std::move(stream_key), std::move(stream_id), std::move(stream));
+    return std::make_unique<XAddCommand>(std::move(stream_key), std::move(stream_id), std::move(stream));
 }
 
 void XAddCommand::execute(ServerInfo &server_info) {

@@ -44,8 +44,7 @@ int Handler::handle_client(int client_socket, Server &server) {
 
             // At some point we must distinguish these anyway, unless we blindly pass all information
             if (StorageCommand *storage_cmd = dynamic_cast<StorageCommand *>(cmd_ptr.get())) {
-                auto storageCommandPtr = std::static_pointer_cast<StorageCommand>(cmd_ptr);
-                storageCommandPtr->set_store_ref(storage_ptr);
+                storage_cmd->set_store_ref(storage_ptr);
             }
 
             cmd_ptr->execute(server_info);

@@ -84,7 +84,7 @@ PingCommand::PingCommand() : Command(CommandType::Ping) {
 }
 
 CommandPtr PingCommand::parse(DecodedMessage const &decoded_msg) {
-    return std::make_shared<PingCommand>();
+    return std::make_unique<PingCommand>();
 }
 
 void PingCommand::execute(ServerInfo &server_info) {
@@ -99,7 +99,7 @@ EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), e
 
 CommandPtr EchoCommand::parse(DecodedMessage const &decoded_msg) {
     std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
-    return std::make_shared<EchoCommand>(std::move(echo_msg));
+    return std::make_unique<EchoCommand>(std::move(echo_msg));
 }
 
 void EchoCommand::execute(ServerInfo &server_info) {
@@ -111,7 +111,7 @@ InfoCommand::InfoCommand() : Command(CommandType::Info) {
 }
 
 CommandPtr InfoCommand::parse(DecodedMessage const &decoded_msg) {
-    return std::make_shared<InfoCommand>();
+    return std::make_unique<InfoCommand>();
 }
 
 void InfoCommand::execute(ServerInfo &server_info) {
@@ -127,7 +127,7 @@ ReplconfCommand::ReplconfCommand() : Command(CommandType::Replconf) {
 }
 
 CommandPtr ReplconfCommand::parse(DecodedMessage const &decoded_msg) {
-    return std::make_shared<ReplconfCommand>();
+    return std::make_unique<ReplconfCommand>();
 }
 
 void ReplconfCommand::execute(ServerInfo &server_info) {
@@ -151,7 +151,7 @@ PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {
 }
 
 CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
-    return std::make_shared<PsyncCommand>();
+    return std::make_unique<PsyncCommand>();
 }
 
 void PsyncCommand::execute(ServerInfo &server_info) {
@@ -177,7 +177,7 @@ CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
     int timeout_milliseconds = std::stoi(decoded_msg[2]);
     int responses_needed = std::stoi(decoded_msg[1]);
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-    return std::make_shared<WaitCommand>(timeout_milliseconds, responses_needed, std::move(start));
+    return std::make_unique<WaitCommand>(timeout_milliseconds, responses_needed, std::move(start));
 }
 
 void WaitCommand::execute(ServerInfo &server_info) {
@@ -231,7 +231,7 @@ CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
         params.push_back(decoded_msg[i]);
     }
 
-    return std::make_shared<ConfigGetCommand>(std::move(params));
+    return std::make_unique<ConfigGetCommand>(std::move(params));
 }
 
 void ConfigGetCommand::execute(ServerInfo &server_info) {

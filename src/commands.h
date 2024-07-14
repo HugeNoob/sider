@@ -23,7 +23,7 @@ class CommandInvalidArgsError : public std::runtime_error {
 enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys, Type, XAdd };
 
 class Command;
-using CommandPtr = std::shared_ptr<Command>;
+using CommandPtr = std::unique_ptr<Command>;
 
 class Command {
    public:

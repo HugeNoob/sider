@@ -34,7 +34,7 @@ struct ServerInfo {
 };
 
 class Server;
-using ServerPtr = std::shared_ptr<Server>;
+using ServerPtr = std::unique_ptr<Server>;
 
 class Server {
    public:
