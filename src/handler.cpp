@@ -32,7 +32,13 @@ int Handler::handle_client(int client_socket, Server &server) {
 
     if (msg == null_bulk_string) return 0;
 
-    std::vector<std::pair<DecodedMessage, int>> commands = MessageParser::parse_message(msg);
+    std::vector<std::pair<DecodedMessage, int>> commands;
+    try {
+        commands = MessageParser::parse_message(msg);
+    } catch (CommandParseError e) {
+        // TODO: Better error handling
+    }
+
     for (auto [command, num_bytes] : commands) {
         CommandPtr cmd_ptr;
         CommandType type;
