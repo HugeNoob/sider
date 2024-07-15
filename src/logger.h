@@ -7,8 +7,8 @@ class Logger {
    public:
     enum class Level { SILENT, DEBUG, ERROR };
     static Level log_level;
-    static void log(std::string const &message);
-    static void log_error(std::string const &message);
+    static void log(std::string_view message);
+    static void log_error(std::string_view message);
 };
 
 #define LOG(Message_)                                                                                       \

@@ -15,8 +15,8 @@ void print(uint8_t c) {
     std::cout << std::hex << std::setw(2) << static_cast<int>(c) << std::endl;
 }
 
-void print_file(std::string const &file_path) {
-    std::ifstream file(file_path, std::ios::binary);
+void print_file(std::string_view file_path) {
+    std::ifstream file(file_path.data(), std::ios::binary);
 
     if (!file) {
         std::cerr << "Error opening file: " << file_path << std::endl;
@@ -46,17 +46,16 @@ void print_file(std::string const &file_path) {
 }
 
 // Local testing: ./spawn_redis_server.sh --dir "/home/lingxi/codecrafters-redis-cpp" --dbfilename "dump.rdb"
-StoragePtr RDBParser::parse_rdb(std::string const &file_path) {
-    LOG("parsing rdb at: " + file_path);
+StoragePtr RDBParser::parse_rdb(std::string_view file_path) {
+    LOG("parsing rdb at: " << file_path.data());
 
     StoragePtr storage_ptr = std::make_shared<Storage>();
-    TimeStampedStringMap extracted_kvt;
 
     // Assume rdb is empty if file does not exist
     struct stat buffer;
-    if (!stat(file_path.c_str(), &buffer) == 0) return {};
+    if (!stat(file_path.data(), &buffer) == 0) return {};
 
-    std::ifstream fin(file_path);
+    std::ifstream fin(file_path.data());
     if (!fin.is_open()) {
         ERROR("Could not open rdb file");
         return {};

@@ -5,7 +5,7 @@
 
 class RDBParser {
    public:
-    static StoragePtr parse_rdb(std::string const &file_path);
+    static StoragePtr parse_rdb(std::string_view file_path);
 
    private:
     enum class Delimiters {

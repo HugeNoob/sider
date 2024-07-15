@@ -9,9 +9,9 @@ uint8_t hexToByte(const std::string& hex) {
     return static_cast<uint8_t>(std::stoi(hex, nullptr, 16));
 }
 
-std::vector<uint8_t> hexStringToBytes(const std::string& hexString) {
+std::vector<uint8_t> hexStringToBytes(std::string_view hexString) {
     std::vector<uint8_t> bytes;
-    std::istringstream stream(hexString);
+    std::istringstream stream(std::string{hexString});
     std::string hex;
     while (stream >> hex) {
         bytes.push_back(hexToByte(hex));
@@ -19,10 +19,10 @@ std::vector<uint8_t> hexStringToBytes(const std::string& hexString) {
     return bytes;
 }
 
-void writeBinaryFile(const std::string& filePath, const std::string& hexString) {
+void writeBinaryFile(std::string_view filePath, std::string_view hexString) {
     std::vector<uint8_t> bytes = hexStringToBytes(hexString);
 
-    std::ofstream outFile(filePath, std::ios::binary);
+    std::ofstream outFile(filePath.data(), std::ios::binary);
     if (!outFile) {
         std::cerr << "Could not open the file for writing." << std::endl;
         return;

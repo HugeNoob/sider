@@ -44,14 +44,16 @@ class Storage {
     using Store = std::unordered_map<std::string, std::variant<StringValue, StreamValue>>;
     using StoreView = Store const&;
 
-    StorageValueVariants get(std::string const& key);
+    StorageValueVariants get(std::string_view key);
 
-    void set(std::string const& key, StorageValueVariants&& value);
+    void set(std::string_view key, StorageValueVariants&& value);
 
     StoreView get_view() const;
 
-    bool check_validity(std::string const& key);
+    bool check_validity(std::string_view key);
 
    private:
     Store store;
+
+    bool is_expired(const StorageValueVariants& val) const;
 };

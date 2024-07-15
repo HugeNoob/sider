@@ -4,69 +4,67 @@
 
 Logger::Level Logger::log_level = Logger::Level::SILENT;
 
-std::string stringify(std::string const &message) {
-    std::stringstream ss;
+std::string stringify(std::string_view message) {
+    std::string res;
+    res.reserve(message.length() * 2);
+
     for (auto ch : message) {
         switch (ch) {
             case '\'':
-                ss << "\\'";
+                res += "\\'";
                 break;
 
             case '\"':
-                ss << "\\\"";
+                res += "\\\"";
                 break;
 
             case '\?':
-                ss << "\\?";
+                res += "\\?";
                 break;
 
             case '\\':
-                ss << "\\\\";
+                res += "\\\\";
                 break;
 
             case '\a':
-                ss << "\\a";
+                res += "\\a";
                 break;
 
             case '\b':
-                ss << "\\b";
+                res += "\\b";
                 break;
 
             case '\f':
-                ss << "\\f";
+                res += "\\f";
                 break;
 
             case '\n':
-                ss << "\\n";
+                res += "\\n";
                 break;
 
             case '\r':
-                ss << "\\r";
+                res += "\\r";
                 break;
 
             case '\t':
-                ss << "\\t";
+                res += "\\t";
                 break;
 
             case '\v':
-                ss << "\\v";
+                res += "\\v";
                 break;
 
             default:
-                ss << ch;
+                res += ch;
         }
     }
-    return ss.str();
+    return res;
 }
 
-void Logger::log(std::string const &message) {
-    std::stringstream ss;
-    ss << "[DEBUG]: " << stringify(message) << '\n';
-    std::cout << ss.str();
+void Logger::log(std::string_view message) {
+    std::cout << "[DEBUG]" << stringify(message) << '\n';
 }
 
-void Logger::log_error(std::string const &message) {
-    std::stringstream ss;
-    ss << "[ERROR]: " << stringify(message) << '\n';
-    std::cerr << ss.str();
+void Logger::log_error(std::string_view message) {
+    std::cout << "[ERROR]: " << stringify(message) << '\n';
 }
