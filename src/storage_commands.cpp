@@ -2,6 +2,8 @@
 
 #include <sys/socket.h>
 
+#include "logger.h"
+
 StorageCommand::StorageCommand(CommandType type) : Command(type) {}
 
 void StorageCommand::set_store_ref(StoragePtr storage_ptr) {
@@ -16,6 +18,10 @@ SetCommand::SetCommand(std::string &&key, std::string &&value, TimeStamp &&expir
 
 // Example: SET <key> <value>
 CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 3) {
+        throw CommandParseError("Insufficient arguments for SET command");
+    }
+
     std::string key = decoded_msg[1];
     std::string value = decoded_msg[2];
 
@@ -48,6 +54,9 @@ GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), ke
 
 // Example: GET <key>
 CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 2) {
+        throw CommandParseError("Insufficient arguments for GET command");
+    }
     std::string key = decoded_msg[1];
     return std::make_unique<GetCommand>(std::move(key));
 }
@@ -71,7 +80,7 @@ void GetCommand::execute(ServerInfo &server_info) {
                 }
             },
             val);
-    } catch (std::out_of_range e) {
+    } catch (std::out_of_range const &e) {
         // Catches missing and expired keys
         message = null_bulk_string;
     }
@@ -87,9 +96,11 @@ KeysCommand::KeysCommand(std::string &&pattern) : StorageCommand(CommandType::Ke
  * <pattern> should be "<some-prefix>*", where some-prefix can also be empty, i.e. "*"
  */
 CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 2) {
+        throw CommandParseError("Insufficient arguments for KEYS command");
+    }
     std::string pattern = decoded_msg[1];
     if (pattern.back() == '*') pattern.pop_back();
-
     return std::make_unique<KeysCommand>(std::move(pattern));
 }
 
@@ -118,6 +129,9 @@ std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string(
 
 // Example: TYPE <key>
 CommandPtr TypeCommand::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 2) {
+        throw CommandParseError("Insufficient arguments for TYPE command");
+    }
     std::string key = decoded_msg[1];
     return std::make_unique<TypeCommand>(std::move(key));
 }
@@ -128,21 +142,26 @@ void TypeCommand::execute(ServerInfo &server_info) {
     if (!this->storage_ptr->check_validity(this->key)) {
         message = TypeCommand::missing_key_type;
     } else {
-        StorageValueVariants val = this->storage_ptr->get(this->key);
-        message = std::visit(
-            [](const auto &v) -> RESPMessage {
-                using T = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<T, StringValue>) {
-                    return MessageParser::encode_simple_string("string");
-                } else if constexpr (std::is_same_v<T, StreamValue>) {
-                    return MessageParser::encode_simple_string("stream");
-                } else {
-                    static_assert(std::is_same_v<T, StringValue> || std::is_same_v<T, StreamValue>,
-                                  "Unhandled type in variant");
-                    throw std::runtime_error("Unreachable");
-                }
-            },
-            val);
+        try {
+            StorageValueVariants val = this->storage_ptr->get(this->key);
+            message = std::visit(
+                [](const auto &v) -> RESPMessage {
+                    using T = std::decay_t<decltype(v)>;
+                    if constexpr (std::is_same_v<T, StringValue>) {
+                        return MessageParser::encode_simple_string("string");
+                    } else if constexpr (std::is_same_v<T, StreamValue>) {
+                        return MessageParser::encode_simple_string("stream");
+                    } else {
+                        static_assert(std::is_same_v<T, StringValue> || std::is_same_v<T, StreamValue>,
+                                      "Unhandled type in variant");
+                        throw std::runtime_error("Unreachable");
+                    }
+                },
+                val);
+        } catch (std::out_of_range const &e) {
+            ERROR("Error getting key from store" << e.what());
+            message = TypeCommand::missing_key_type;
+        }
     }
 
     send(this->client_socket, message.c_str(), message.size(), 0);
@@ -162,12 +181,16 @@ XAddCommand::XAddCommand(std::string &&stream_key, std::string &&stream_id,
  * eg. temperature 60 humidity 100 -> (temperature, 60), (humidity, 100)
  */
 CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 3) {
+        throw CommandParseError("Insufficient arguments for XAdd command");
+    }
+
     std::string stream_key = decoded_msg[1];
     std::string stream_id = decoded_msg[2];
 
     int numPairs = decoded_msg.size() - 3;
     if (numPairs & 1) {
-        throw CommandInvalidArgsError("Invalid number of key value pair inputs to XAdd command");
+        throw CommandParseError("Invalid number of key-value pair inputs to XAdd command");
     }
 
     Stream stream;

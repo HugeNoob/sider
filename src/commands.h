@@ -15,11 +15,6 @@ class CommandParseError : public std::runtime_error {
     CommandParseError(std::string &&error_msg);
 };
 
-class CommandInvalidArgsError : public std::runtime_error {
-   public:
-    CommandInvalidArgsError(std::string &&error_msg);
-};
-
 enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys, Type, XAdd };
 
 class Command;
@@ -94,9 +89,12 @@ class PsyncCommand : public Command {
 
     void execute(ServerInfo &server_info) override;
 
+    static void initialiseEmptyRdb();
+
    private:
     static std::string empty_rdb_hardcoded;
     static std::string empty_rdb_in_bytes;
+    static bool empty_rdb_initialised;
 };
 
 class WaitCommand : public Command {

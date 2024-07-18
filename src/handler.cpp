@@ -10,6 +10,10 @@
 #include "storage_commands.h"
 #include "utils.h"
 
+void respond_failure(int client_socket, std::string_view error) {
+    send(client_socket, error.data(), error.size(), 0);
+}
+
 int Handler::handle_client(int client_socket, Server &server) {
     ServerInfo &server_info = server.get_server_info();
     StoragePtr storage_ptr = server.get_storage_ptr();
@@ -26,17 +30,17 @@ int Handler::handle_client(int client_socket, Server &server) {
     }
 
     std::string msg(buf.data());
-    std::stringstream ss;
-    ss << "Port " << server_info.tcp_port << ", message received from " << client_socket << ": " << msg;
-    LOG(ss.str());
+    LOG("Port " << server_info.tcp_port << ", message received from " << client_socket << ": " << msg);
 
     if (msg == null_bulk_string) return 0;
 
     std::vector<std::pair<DecodedMessage, int>> commands;
     try {
         commands = MessageParser::parse_message(msg);
-    } catch (CommandParseError e) {
-        // TODO: Better error handling
+    } catch (CommandParseError const &e) {
+        ERROR("Error parsing command" << e.what());
+        respond_failure(client_socket, MessageParser::encode_simple_error("Error parsing message"));
+        return 1;
     }
 
     for (auto [command, num_bytes] : commands) {
@@ -54,10 +58,9 @@ int Handler::handle_client(int client_socket, Server &server) {
             }
 
             cmd_ptr->execute(server_info);
-        } catch (CommandParseError e) {
-            std::stringstream ss;
-            ss << "Error while handling command. Command: " << msg << ". Error: " << e.what();
-            ERROR(ss.str());
+        } catch (CommandParseError const &e) {
+            ERROR("Error while handling command. Command: " << msg << ". Error: " << e.what());
+            respond_failure(client_socket, MessageParser::encode_simple_error(e.what()));
             return 1;
         }
 

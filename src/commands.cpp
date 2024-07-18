@@ -11,8 +11,6 @@
 
 CommandParseError::CommandParseError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {}
 
-CommandInvalidArgsError::CommandInvalidArgsError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {}
-
 Command::Command(CommandType type) : type(type) {}
 
 CommandType Command::get_type() const {
@@ -24,6 +22,10 @@ void Command::set_client_socket(int client_socket) {
 }
 
 CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 1) {
+        throw CommandParseError("Invalid command received");
+    }
+
     std::string command = decoded_msg[0];
     std::transform(command.begin(), command.end(), command.begin(), toupper);
 
@@ -53,7 +55,7 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
         return WaitCommand::parse(decoded_msg);
     } else if (command == "CONFIG") {
         if (decoded_msg.size() <= 1) {
-            throw CommandInvalidArgsError("Invalid arguments for CONFIG command");
+            throw CommandParseError("Insufficent arguments for CONFIG command");
         }
 
         std::string config_type = decoded_msg[1];
@@ -74,8 +76,8 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
         return XAddCommand::parse(decoded_msg);
     }
 
-    LOG("Handling else case: Do nothing");
-    throw CommandParseError("Unknown command during parsing");
+    LOG("Handling else case: Unknown command");
+    throw CommandParseError("Unknown command");
 }
 
 PingCommand::PingCommand() : Command(CommandType::Ping) {}
@@ -149,9 +151,24 @@ std::string PsyncCommand::empty_rdb_hardcoded =
     "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa0875"
     "7365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
 
-std::string PsyncCommand::empty_rdb_in_bytes = hexToBytes(PsyncCommand::empty_rdb_hardcoded);
+std::string PsyncCommand::empty_rdb_in_bytes = "";
 
-PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {}
+bool PsyncCommand::empty_rdb_initialised = false;
+
+void PsyncCommand::initialiseEmptyRdb() {
+    if (PsyncCommand::empty_rdb_initialised) return;
+
+    try {
+        empty_rdb_in_bytes = hexToBytes(empty_rdb_hardcoded);
+        PsyncCommand::empty_rdb_initialised = true;
+    } catch (const std::runtime_error &e) {
+        ERROR("Error initializing empty_rdb_in_bytes: " << e.what());
+    }
+}
+
+PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {
+    initialiseEmptyRdb();
+}
 
 // Example: PSYNC ? -1
 CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
@@ -182,6 +199,10 @@ WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed, std::ch
  * WAIT should reply when either condition is met.
  */
 CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
+    if (decoded_msg.size() < 3) {
+        throw CommandParseError("Insufficient arguments for WAIT command");
+    }
+
     int timeout_milliseconds = std::stoi(decoded_msg[2]);
     int responses_needed = std::stoi(decoded_msg[1]);
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -256,6 +277,8 @@ void ConfigGetCommand::execute(ServerInfo &server_info) {
             message_array.push_back(server_info.dir);
         } else if (param == "dbfilename") {
             message_array.push_back(server_info.dbfilename);
+        } else {
+            throw CommandParseError("Unknown configuration parameter for CONFIG GET");
         }
     }
 

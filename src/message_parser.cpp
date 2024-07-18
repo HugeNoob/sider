@@ -8,7 +8,7 @@
 
 std::string hexToBytes(std::string_view s) {
     if (s.size() % 2 != 0) {
-        throw std::invalid_argument("Hex string cannot have an odd length");
+        throw std::runtime_error("Hex string cannot have an odd length");
     }
 
     std::string res;
@@ -104,7 +104,7 @@ std::vector<std::pair<DecodedMessage, int>> MessageParser::parse_message(std::st
     }
 
     if (Logger::log_level >= Logger::Level::DEBUG) {
-        ERROR("Parsed " + std::to_string(commands.size()) + " commands");
+        ERROR("Parsed " << std::to_string(commands.size()) << " commands");
         for (int i = 0; i < commands.size(); i++) {
             std::stringstream ss;
             ss << "Command " << i << ", has " << commands[i].second << " bytes: ";

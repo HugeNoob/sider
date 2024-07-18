@@ -24,50 +24,44 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
         std::string arg = argv[i];
         if (arg == "--port") {
             if (i + 1 >= argc) {
-                ERROR("Error: --port requires an argument");
-                exit(1);
+                throw std::invalid_argument("Error: --port requires an argument");
             }
 
             try {
                 server_info.tcp_port = std::stoi(argv[++i]);
-            } catch (const std::invalid_argument &e) {
-                ERROR("Invalid argument: port is not a valid integer");
-            } catch (const std::out_of_range &e) {
-                ERROR("Out of range: The port number is too large or too small.");
+            } catch (std::invalid_argument const &e) {
+                throw std::invalid_argument("Invalid argument: port is not a valid integer");
+            } catch (std::out_of_range const &e) {
+                throw std::out_of_range("Out of range: The port number is too large or too small.");
             }
         } else if (arg == "--replicaof") {
             if (i + 1 >= argc) {
-                ERROR("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
-                exit(1);
+                throw std::invalid_argument("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
             }
 
             std::string replica_info = argv[++i];
             int j = replica_info.find(' ');
             if (j == std::string::npos) {
-                ERROR("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
-                exit(1);
+                throw std::invalid_argument("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
             }
+
             server_info.replication_info.master_host = replica_info.substr(0, j);
             server_info.replication_info.master_port = stoi(replica_info.substr(j + 1, replica_info.size() - j - 1));
             if (server_info.replication_info.master_port < 0) {
-                ERROR("master_port must be a non-negative integer");
-                exit(1);
+                throw std::invalid_argument("master_port must be a non-negative integer");
             }
         } else if (arg == "--dir") {
             if (i + 1 >= argc) {
-                ERROR("--dir requires an argument");
-                exit(1);
+                throw std::invalid_argument("--dir requires an argument");
             }
             server_info.dir = argv[++i];
         } else if (arg == "--dbfilename") {
             if (i + 1 >= argc) {
-                ERROR("--dbfilename requires an argument");
-                exit(1);
+                throw std::invalid_argument("--dbfilename requires an argument");
             }
             server_info.dbfilename = argv[++i];
         } else {
-            ERROR("Unknown option '" + arg + "'.\n");
-            exit(1);
+            throw std::invalid_argument("Unknown option '" + arg + "'.\n");
         }
     }
 
@@ -122,7 +116,7 @@ int Server::handshake_master(ServerInfo &server_info) {
     master_addr.sin_addr.s_addr = inet_addr(master_host.c_str());
     master_addr.sin_port = htons(master_port);
     if (connect(master_fd, (struct sockaddr *)&master_addr, sizeof(master_addr)) != 0) {
-        ERROR("Failed to connect to master port " + master_host + ":" + std::to_string(master_port));
+        ERROR("Failed to connect to master port " << master_host + ":" << std::to_string(master_port));
         return 1;
     }
     server_info.replication_info.master_fd = master_fd;
@@ -192,14 +186,12 @@ void Server::start() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     this->server_fd = server_fd;
     if (server_fd < 0) {
-        ERROR("Failed to create server socket");
-        return;
+        throw std::runtime_error("Failed to create server socket");
     }
 
     int reuse = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-        ERROR("setsockopt failed\n");
-        return;
+        throw std::runtime_error("setsockopt failed\n");
     }
 
     struct sockaddr_in server_addr;
@@ -208,21 +200,18 @@ void Server::start() {
     server_addr.sin_port = htons(this->server_info.tcp_port);
 
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
-        ERROR("Failed to bind to port " + std::to_string(this->server_info.tcp_port));
-        return;
+        throw std::runtime_error("Failed to bind to port " + std::to_string(this->server_info.tcp_port));
     }
 
     int connection_backlog = 5;
     if (::listen(server_fd, connection_backlog) != 0) {
-        ERROR("listen failed");
-        return;
+        throw std::runtime_error("listen failed");
     }
 
     // Connect to master if we are slave
     if (this->server_info.replication_info.master_port != -1) {
         if (handshake_master(this->server_info) != 0) {
-            ERROR("Error handshaking master as slave");
-            return;
+            throw std::runtime_error("Error handshaking master as slave");
         }
     }
 
@@ -250,8 +239,7 @@ void Server::listen() {
 
         int num_ready = poll(fds.data(), fds.size(), -1);
         if (num_ready < 0) {
-            ERROR("Error while polling");
-            exit(1);
+            throw std::runtime_error("Error while polling");
         }
 
         if (fds[0].revents & POLLIN) {
@@ -259,10 +247,9 @@ void Server::listen() {
             socklen_t client_addr_len = sizeof(client_addr);
             int client_socket = accept(this->server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
             if (client_socket < 0) {
-                ERROR("Failed to accept new connection");
-                exit(1);
+                throw std::runtime_error("Failed to accept new connection");
             }
-            LOG("New connection accepted from " + std::to_string(client_socket));
+            LOG("New connection accepted from " << std::to_string(client_socket));
             server_info.client_sockets.push_back(client_socket);
         }
 

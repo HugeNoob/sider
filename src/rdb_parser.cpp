@@ -57,8 +57,7 @@ StoragePtr RDBParser::parse_rdb(std::string_view file_path) {
 
     std::ifstream fin(file_path.data());
     if (!fin.is_open()) {
-        ERROR("Could not open rdb file");
-        return {};
+        throw std::runtime_error("Unable to open file");
     }
 
     uint8_t c;
@@ -95,8 +94,8 @@ StoragePtr RDBParser::parse_rdb(std::string_view file_path) {
                 TimeStamp ts;
                 try {
                     ts = parse_expiry(fin, static_cast<RDBParser::Delimiters>(c));
-                } catch (std::runtime_error e) {
-                    ERROR(e.what());
+                } catch (std::runtime_error const &e) {
+                    ERROR("Error while parsing expiry: " << e.what());
                     return {};
                 }
 
@@ -163,6 +162,10 @@ TimeStamp RDBParser::parse_expiry(std::ifstream &fin, RDBParser::Delimiters deli
     std::string expiry_timestamp = raw_timestamp.str();
     reverse(expiry_timestamp.begin(), expiry_timestamp.end());
 
+    if (expiry_timestamp.size() & 1) {
+        throw std::runtime_error("Hex string cannot have an odd length");
+    }
+
     // Reverse will reverse all our hex numbers, so we need to reverse each block of 2 again
     for (int i = 0; i < expiry_timestamp.size(); i += 2) {
         char tmp = expiry_timestamp[i];
@@ -180,9 +183,9 @@ TimeStamp RDBParser::parse_expiry(std::ifstream &fin, RDBParser::Delimiters deli
             std::chrono::seconds duration(expiry_value);
             return TimeStamp(duration);
         }
-    } catch (const std::invalid_argument &e) {
+    } catch (std::invalid_argument const &e) {
         std::cerr << "Out of range when parsing rdb timestamp: " << e.what() << std::endl;
-        throw e;
+        return std::nullopt;
     }
 
     throw std::runtime_error("Unknown expiry time unit");
