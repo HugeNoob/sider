@@ -26,6 +26,8 @@ class Command {
 
     Command(CommandType type);
 
+    virtual ~Command() = default;
+
     CommandType get_type() const;
 
     void set_client_socket(int client_socket);

@@ -53,7 +53,7 @@ StoragePtr RDBParser::parse_rdb(std::string_view file_path) {
 
     // Assume rdb is empty if file does not exist
     struct stat buffer;
-    if (!stat(file_path.data(), &buffer) == 0) return {};
+    if (stat(file_path.data(), &buffer) != 0) return {};
 
     std::ifstream fin(file_path.data());
     if (!fin.is_open()) {
