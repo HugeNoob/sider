@@ -22,7 +22,7 @@ using CommandPtr = std::unique_ptr<Command>;
 
 class Command {
    public:
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     Command(CommandType type);
 
@@ -43,7 +43,7 @@ class PingCommand : public Command {
    public:
     PingCommand();
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 };
@@ -52,7 +52,7 @@ class EchoCommand : public Command {
    public:
     EchoCommand(std::string &&echo_msg);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -64,7 +64,7 @@ class InfoCommand : public Command {
    public:
     InfoCommand();
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -78,7 +78,7 @@ class ReplconfCommand : public Command {
    public:
     ReplconfCommand();
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 };
@@ -87,7 +87,7 @@ class PsyncCommand : public Command {
    public:
     PsyncCommand();
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -103,7 +103,7 @@ class WaitCommand : public Command {
    public:
     WaitCommand(int timeout_milliseconds, int responses_needed, std::chrono::steady_clock::time_point &&start);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -117,7 +117,7 @@ class ConfigGetCommand : public Command {
    public:
     ConfigGetCommand(std::vector<std::string> &&params);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -125,4 +125,4 @@ class ConfigGetCommand : public Command {
     std::vector<std::string> params;
 };
 
-void propagate_command(RESPMessage const &command, ServerInfo &server_info);
+void propagate_command(const RESPMessage &command, ServerInfo &server_info);

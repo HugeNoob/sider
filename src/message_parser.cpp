@@ -162,7 +162,7 @@ RESPMessage MessageParser::encode_bulk_string(std::string_view message) {
     return res;
 }
 
-RESPMessage MessageParser::encode_array(std::vector<std::string> const &words) {
+RESPMessage MessageParser::encode_array(const std::vector<std::string> &words) {
     RESPMessage res;
 
     int size = 1 + numDigits(words.size()) + DELIM_SIZE;
@@ -213,7 +213,7 @@ RESPMessage MessageParser::encode_simple_error(std::string_view message) {
     return res;
 }
 
-RESPMessage MessageParser::encode_stream(Stream const &stream) {
+RESPMessage MessageParser::encode_stream(const Stream &stream) {
     // TODO
     return "stream";
 }

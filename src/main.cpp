@@ -9,9 +9,9 @@ int main(int argc, char **argv) {
     try {
         ServerPtr server_ptr = std::make_unique<Server>(ServerInfo::parse(argc, argv));
         server_ptr->listen();
-    } catch (std::out_of_range const &e) {
+    } catch (const std::out_of_range &e) {
         ERROR(e.what());
-    } catch (std::runtime_error const &e) {
+    } catch (const std::runtime_error &e) {
         ERROR(e.what());
     }
     return 0;

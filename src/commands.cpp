@@ -21,7 +21,7 @@ void Command::set_client_socket(int client_socket) {
     this->client_socket = client_socket;
 }
 
-CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
+CommandPtr Command::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 1) {
         throw CommandParseError("Invalid command received");
     }
@@ -83,7 +83,7 @@ CommandPtr Command::parse(DecodedMessage const &decoded_msg) {
 PingCommand::PingCommand() : Command(CommandType::Ping) {}
 
 // Example: PING
-CommandPtr PingCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr PingCommand::parse(const DecodedMessage &decoded_msg) {
     return std::make_unique<PingCommand>();
 }
 
@@ -97,7 +97,7 @@ void PingCommand::execute(ServerInfo &server_info) {
 EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), echo_msg(std::move(echo_msg)) {}
 
 // Example: ECHO ...args
-CommandPtr EchoCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr EchoCommand::parse(const DecodedMessage &decoded_msg) {
     std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
     return std::make_unique<EchoCommand>(std::move(echo_msg));
 }
@@ -110,7 +110,7 @@ void EchoCommand::execute(ServerInfo &server_info) {
 InfoCommand::InfoCommand() : Command(CommandType::Info) {}
 
 // Example: INFO replication
-CommandPtr InfoCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr InfoCommand::parse(const DecodedMessage &decoded_msg) {
     return std::make_unique<InfoCommand>();
 }
 
@@ -132,7 +132,7 @@ ReplconfCommand::ReplconfCommand() : Command(CommandType::Replconf) {}
  *
  * Both are sent by replica to master during handshake.
  */
-CommandPtr ReplconfCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr ReplconfCommand::parse(const DecodedMessage &decoded_msg) {
     return std::make_unique<ReplconfCommand>();
 }
 
@@ -171,7 +171,7 @@ PsyncCommand::PsyncCommand() : Command(CommandType::Psync) {
 }
 
 // Example: PSYNC ? -1
-CommandPtr PsyncCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr PsyncCommand::parse(const DecodedMessage &decoded_msg) {
     return std::make_unique<PsyncCommand>();
 }
 
@@ -198,7 +198,7 @@ WaitCommand::WaitCommand(int timeout_milliseconds, int responses_needed, std::ch
  *
  * WAIT should reply when either condition is met.
  */
-CommandPtr WaitCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr WaitCommand::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 3) {
         throw CommandParseError("Insufficient arguments for WAIT command");
     }
@@ -256,7 +256,7 @@ ConfigGetCommand::ConfigGetCommand(std::vector<std::string> &&params)
  *
  * param can be either "dir" or "filename"
  */
-CommandPtr ConfigGetCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr ConfigGetCommand::parse(const DecodedMessage &decoded_msg) {
     std::vector<std::string> params;
 
     // First two words should be CONFIG GET
@@ -286,7 +286,7 @@ void ConfigGetCommand::execute(ServerInfo &server_info) {
     send(client_socket, encoded_message.c_str(), encoded_message.size(), 0);
 }
 
-void propagate_command(RESPMessage const &command, ServerInfo &server_info) {
+void propagate_command(const RESPMessage &command, ServerInfo &server_info) {
     for (int replica : server_info.replication_info.replica_connections) {
         send(replica, command.c_str(), command.size(), 0);
     }

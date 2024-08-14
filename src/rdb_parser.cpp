@@ -94,7 +94,7 @@ StoragePtr RDBParser::parse_rdb(std::string_view file_path) {
                 TimeStamp ts;
                 try {
                     ts = parse_expiry(fin, static_cast<RDBParser::Delimiters>(c));
-                } catch (std::runtime_error const &e) {
+                } catch (const std::runtime_error &e) {
                     ERROR("Error while parsing expiry: " << e.what());
                     return {};
                 }
@@ -183,7 +183,7 @@ TimeStamp RDBParser::parse_expiry(std::ifstream &fin, RDBParser::Delimiters deli
             std::chrono::seconds duration(expiry_value);
             return TimeStamp(duration);
         }
-    } catch (std::invalid_argument const &e) {
+    } catch (const std::invalid_argument &e) {
         std::cerr << "Out of range when parsing rdb timestamp: " << e.what() << std::endl;
         return std::nullopt;
     }

@@ -21,7 +21,7 @@ class SetCommand : public StorageCommand {
    public:
     SetCommand(std::string &&key, std::string &&value, TimeStamp &&expire_time);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -35,7 +35,7 @@ class GetCommand : public StorageCommand {
    public:
     GetCommand(std::string &&key);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -47,21 +47,21 @@ class KeysCommand : public StorageCommand {
    public:
     KeysCommand(std::string &&pattern);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
    private:
     std::string pattern;
 
-    bool match(std::string const &target, std::string const &pattern);
+    bool match(const std::string &target, const std::string &pattern);
 };
 
 class TypeCommand : public StorageCommand {
    public:
     TypeCommand(std::string &&key);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 
@@ -76,7 +76,7 @@ class XAddCommand : public StorageCommand {
     XAddCommand(std::string &&stream_key, std::string &&stream_id,
                 std::vector<std::pair<std::string, std::string>> &&stream);
 
-    static CommandPtr parse(DecodedMessage const &decoded_msg);
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     void execute(ServerInfo &server_info) override;
 

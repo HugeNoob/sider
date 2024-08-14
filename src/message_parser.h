@@ -19,11 +19,11 @@ class MessageParser {
 
     static RESPMessage encode_simple_string(std::string_view message);
     static RESPMessage encode_bulk_string(std::string_view message);
-    static RESPMessage encode_array(std::vector<std::string> const &words);
+    static RESPMessage encode_array(const std::vector<std::string> &words);
     static RESPMessage encode_rdb_file(std::string_view message);
     static RESPMessage encode_integer(int num);
     static RESPMessage encode_simple_error(std::string_view message);
-    static RESPMessage encode_stream(Stream const &stream);
+    static RESPMessage encode_stream(const Stream &stream);
 };
 
 const RESPMessage null_bulk_string = "$-1\r\n";

@@ -29,9 +29,9 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
 
             try {
                 server_info.tcp_port = std::stoi(argv[++i]);
-            } catch (std::invalid_argument const &e) {
+            } catch (const std::invalid_argument &e) {
                 throw std::invalid_argument("Invalid argument: port is not a valid integer");
-            } catch (std::out_of_range const &e) {
+            } catch (const std::out_of_range &e) {
                 throw std::out_of_range("Out of range: The port number is too large or too small.");
             }
         } else if (arg == "--replicaof") {

@@ -17,7 +17,7 @@ SetCommand::SetCommand(std::string &&key, std::string &&value, TimeStamp &&expir
       expire_time(std::move(expire_time)) {}
 
 // Example: SET <key> <value>
-CommandPtr SetCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr SetCommand::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 3) {
         throw CommandParseError("Insufficient arguments for SET command");
     }
@@ -53,7 +53,7 @@ void SetCommand::execute(ServerInfo &server_info) {
 GetCommand::GetCommand(std::string &&key) : StorageCommand(CommandType::Get), key(std::move(key)) {}
 
 // Example: GET <key>
-CommandPtr GetCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr GetCommand::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 2) {
         throw CommandParseError("Insufficient arguments for GET command");
     }
@@ -80,7 +80,7 @@ void GetCommand::execute(ServerInfo &server_info) {
                 }
             },
             val);
-    } catch (std::out_of_range const &e) {
+    } catch (const std::out_of_range &e) {
         // Catches missing and expired keys
         message = null_bulk_string;
     }
@@ -95,7 +95,7 @@ KeysCommand::KeysCommand(std::string &&pattern) : StorageCommand(CommandType::Ke
  *
  * <pattern> should be "<some-prefix>*", where some-prefix can also be empty, i.e. "*"
  */
-CommandPtr KeysCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr KeysCommand::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 2) {
         throw CommandParseError("Insufficient arguments for KEYS command");
     }
@@ -119,7 +119,7 @@ void KeysCommand::execute(ServerInfo &server_info) {
     send(client_socket, encoded_message.c_str(), encoded_message.size(), 0);
 }
 
-bool KeysCommand::match(std::string const &target, std::string const &pattern) {
+bool KeysCommand::match(const std::string &target, const std::string &pattern) {
     return target.compare(0, pattern.size(), pattern) == 0;
 }
 
@@ -128,7 +128,7 @@ TypeCommand::TypeCommand(std::string &&key) : StorageCommand(CommandType::Type),
 std::string TypeCommand::missing_key_type = MessageParser::encode_simple_string("none");
 
 // Example: TYPE <key>
-CommandPtr TypeCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr TypeCommand::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 2) {
         throw CommandParseError("Insufficient arguments for TYPE command");
     }
@@ -158,7 +158,7 @@ void TypeCommand::execute(ServerInfo &server_info) {
                     }
                 },
                 val);
-        } catch (std::out_of_range const &e) {
+        } catch (const std::out_of_range &e) {
             ERROR("Error getting key from store" << e.what());
             message = TypeCommand::missing_key_type;
         }
@@ -180,7 +180,7 @@ XAddCommand::XAddCommand(std::string &&stream_key, std::string &&stream_id,
  * ...args should be a variable number of key-value pairs
  * eg. temperature 60 humidity 100 -> (temperature, 60), (humidity, 100)
  */
-CommandPtr XAddCommand::parse(DecodedMessage const &decoded_msg) {
+CommandPtr XAddCommand::parse(const DecodedMessage &decoded_msg) {
     if (decoded_msg.size() < 3) {
         throw CommandParseError("Insufficient arguments for XAdd command");
     }
