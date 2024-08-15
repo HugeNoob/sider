@@ -174,7 +174,7 @@ TimeStamp RDBParser::parse_expiry(std::ifstream &fin, RDBParser::Delimiters deli
     }
 
     try {
-        unsigned long expiry_value = std::stoul(expiry_timestamp, nullptr, 16);
+        const unsigned long expiry_value = std::stoul(expiry_timestamp, nullptr, 16);
 
         if (delim == RDBParser::Delimiters::EXPIRY_MILLISECONDS) {
             std::chrono::milliseconds duration(expiry_value);
@@ -196,7 +196,7 @@ uint64_t RDBParser::parse_size_encoding(std::ifstream &fin) {
     uint8_t c;
     fin >> c;
     std::bitset<4> bs(c);
-    int last_bit = bs[3], second_last_bit = bs[2];
+    const int last_bit = bs[3], second_last_bit = bs[2];
 
     // Supposed to check "first two" bits aka leftmost, but this is flipped
     // 0x8 gives 0 0 0 1
@@ -211,7 +211,7 @@ uint64_t RDBParser::parse_size_encoding(std::ifstream &fin) {
         encoded_size = RDBParser::SizeEncoding::STRING_ENCODING;
     }
 
-    int num_bytes_to_read = static_cast<int>(encoded_size);
+    const int num_bytes_to_read = static_cast<int>(encoded_size);
 
     std::string raw_size;
     raw_size.push_back(c);

@@ -19,7 +19,7 @@ int Handler::handle_client(int client_socket, Server &server) {
     StoragePtr storage_ptr = server.get_storage_ptr();
 
     std::vector<char> buf(1024);
-    int recv_bytes = recv(client_socket, buf.data(), 1024, 0);
+    const int recv_bytes = recv(client_socket, buf.data(), 1024, 0);
 
     if (recv_bytes < 0) {
         ERROR("Error receiving bytes while handling client");

@@ -89,7 +89,7 @@ CommandPtr PingCommand::parse(const DecodedMessage &decoded_msg) {
 
 void PingCommand::execute(ServerInfo &server_info) {
     if (server_info.replication_info.master_fd != this->client_socket) {
-        RESPMessage message = MessageParser::encode_simple_string("PONG");
+        const RESPMessage message = MessageParser::encode_simple_string("PONG");
         send(this->client_socket, message.c_str(), message.size(), 0);
     }
 }
@@ -98,13 +98,13 @@ EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), e
 
 // Example: ECHO ...args
 CommandPtr EchoCommand::parse(const DecodedMessage &decoded_msg) {
-    std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
+    const std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
     return std::make_unique<EchoCommand>(std::move(echo_msg));
 }
 
 void EchoCommand::execute(ServerInfo &server_info) {
-    RESPMessage encoded_echo_msg = MessageParser::encode_bulk_string(this->echo_msg);
-    send(this->client_socket, encoded_echo_msg.c_str(), encoded_echo_msg.size(), 0);
+    const std::string_view encoded_echo_msg = MessageParser::encode_bulk_string(this->echo_msg);
+    send(this->client_socket, encoded_echo_msg.data(), encoded_echo_msg.size(), 0);
 }
 
 InfoCommand::InfoCommand() : Command(CommandType::Info) {}
@@ -115,11 +115,11 @@ CommandPtr InfoCommand::parse(const DecodedMessage &decoded_msg) {
 }
 
 void InfoCommand::execute(ServerInfo &server_info) {
-    std::string role = server_info.replication_info.master_port == -1 ? "role:master" : "role:slave";
-    std::string replid = "master_replid:" + std::to_string(server_info.replication_info.master_repl_offset);
-    std::string offset = "master_repl_offset:" + std::to_string(server_info.replication_info.master_repl_offset);
-    std::string temp_message = role + "\n" + replid + "\n" + offset + "\n";
-    RESPMessage message = MessageParser::encode_bulk_string(temp_message);
+    const std::string role = server_info.replication_info.master_port == -1 ? "role:master" : "role:slave";
+    const std::string replid = "master_replid:" + std::to_string(server_info.replication_info.master_repl_offset);
+    const std::string offset = "master_repl_offset:" + std::to_string(server_info.replication_info.master_repl_offset);
+    const std::string temp_message = role + "\n" + replid + "\n" + offset + "\n";
+    const RESPMessage message = MessageParser::encode_bulk_string(temp_message);
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
@@ -176,8 +176,8 @@ CommandPtr PsyncCommand::parse(const DecodedMessage &decoded_msg) {
 }
 
 void PsyncCommand::execute(ServerInfo &server_info) {
-    std::string temp_message = "FULLRESYNC " + server_info.replication_info.master_replid + " " +
-                               std::to_string(server_info.replication_info.master_repl_offset);
+    const std::string temp_message = "FULLRESYNC " + server_info.replication_info.master_replid + " " +
+                                     std::to_string(server_info.replication_info.master_repl_offset);
     RESPMessage message = MessageParser::encode_simple_string(temp_message);
     send(this->client_socket, message.c_str(), message.size(), 0);
     server_info.replication_info.replica_connections.insert(this->client_socket);
@@ -203,28 +203,29 @@ CommandPtr WaitCommand::parse(const DecodedMessage &decoded_msg) {
         throw CommandParseError("Insufficient arguments for WAIT command");
     }
 
-    int timeout_milliseconds = std::stoi(decoded_msg[2]);
-    int responses_needed = std::stoi(decoded_msg[1]);
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    const int timeout_milliseconds = std::stoi(decoded_msg[2]);
+    const int responses_needed = std::stoi(decoded_msg[1]);
+    const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     return std::make_unique<WaitCommand>(timeout_milliseconds, responses_needed, std::move(start));
 }
 
 void WaitCommand::execute(ServerInfo &server_info) {
     if (server_info.bytes_propagated == 0) {
-        RESPMessage message = MessageParser::encode_integer(server_info.replication_info.replica_connections.size());
+        const RESPMessage message =
+            MessageParser::encode_integer(server_info.replication_info.replica_connections.size());
         send(this->client_socket, message.c_str(), message.size(), 0);
         return;
     }
 
     RESPMessage message = MessageParser::encode_array({"REPLCONF", "GETACK", "*"});
-    for (int fd : server_info.replication_info.replica_connections) {
+    for (const int fd : server_info.replication_info.replica_connections) {
         send(fd, message.c_str(), message.size(), 0);
     }
 
     std::vector<char> buf(1024);
     int responses_received = 0;
     while (responses_received < responses_needed) {
-        int duration_milliseconds =
+        const int duration_milliseconds =
             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
         if (duration_milliseconds >= this->timeout_milliseconds) {
             break;
@@ -235,7 +236,7 @@ void WaitCommand::execute(ServerInfo &server_info) {
             fds.push_back({client_socket, POLLIN, 0});
         }
 
-        int num_ready = poll(fds.data(), fds.size(), timeout_milliseconds - duration_milliseconds);
+        const int num_ready = poll(fds.data(), fds.size(), timeout_milliseconds - duration_milliseconds);
         for (size_t i = 1; i < fds.size(); i++) {
             if (fds[i].revents & POLLIN) {
                 recv(fds[i].fd, buf.data(), 1024, 0);
@@ -282,13 +283,13 @@ void ConfigGetCommand::execute(ServerInfo &server_info) {
         }
     }
 
-    RESPMessage encoded_message = MessageParser::encode_array(message_array);
+    const RESPMessage encoded_message = MessageParser::encode_array(message_array);
     send(client_socket, encoded_message.c_str(), encoded_message.size(), 0);
 }
 
-void propagate_command(const RESPMessage &command, ServerInfo &server_info) {
-    for (int replica : server_info.replication_info.replica_connections) {
-        send(replica, command.c_str(), command.size(), 0);
+void propagate_command(const std::string_view &command, ServerInfo &server_info) {
+    for (const int replica : server_info.replication_info.replica_connections) {
+        send(replica, command.data(), command.size(), 0);
     }
     server_info.bytes_propagated += command.size();
 }

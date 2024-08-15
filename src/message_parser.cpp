@@ -151,7 +151,7 @@ RESPMessage MessageParser::encode_simple_string(std::string_view message) {
 RESPMessage MessageParser::encode_bulk_string(std::string_view message) {
     std::string res;
 
-    int digits = numDigits(message.size());
+    const int digits = numDigits(message.size());
     res.reserve(1 + digits + 2 + message.size() + DELIM_SIZE);
 
     res.push_back('$');

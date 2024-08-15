@@ -122,7 +122,7 @@ int Server::handshake_master(ServerInfo &server_info) {
     server_info.replication_info.master_fd = master_fd;
 
     LOG("pinging master");
-    std::vector<std::string> arr = {"ping"};
+    const std::vector<std::string> arr = {"ping"};
     RESPMessage message = MessageParser::encode_array(arr);
     if (send(master_fd, message.c_str(), message.size(), 0) < 0) {
         ERROR("Failed to ping master");
@@ -183,13 +183,13 @@ void Server::start() {
         this->storage_ptr = std::make_shared<Storage>();
     }
 
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    const int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     this->server_fd = server_fd;
     if (server_fd < 0) {
         throw std::runtime_error("Failed to create server socket");
     }
 
-    int reuse = 1;
+    const int reuse = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
         throw std::runtime_error("setsockopt failed\n");
     }
@@ -203,7 +203,7 @@ void Server::start() {
         throw std::runtime_error("Failed to bind to port " + std::to_string(this->server_info.tcp_port));
     }
 
-    int connection_backlog = 5;
+    const int connection_backlog = 5;
     if (::listen(server_fd, connection_backlog) != 0) {
         throw std::runtime_error("listen failed");
     }
@@ -237,7 +237,7 @@ void Server::listen() {
             fds.push_back({this->server_info.replication_info.master_fd, POLLIN, 0});
         }
 
-        int num_ready = poll(fds.data(), fds.size(), -1);
+        const int num_ready = poll(fds.data(), fds.size(), -1);
         if (num_ready < 0) {
             throw std::runtime_error("Error while polling");
         }
