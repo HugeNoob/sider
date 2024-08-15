@@ -9,7 +9,7 @@
 #include "logger.h"
 #include "storage_commands.h"
 
-CommandParseError::CommandParseError(std::string &&error_msg) : std::runtime_error(std::move(error_msg)) {}
+CommandParseError::CommandParseError(std::string_view error_msg) : std::runtime_error(error_msg.data()) {}
 
 Command::Command(CommandType type) : type(type) {}
 
@@ -147,7 +147,7 @@ void ReplconfCommand::execute(ServerInfo &server_info) {
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
 
-std::string PsyncCommand::empty_rdb_hardcoded =
+constexpr const std::string_view PsyncCommand::empty_rdb_hardcoded =
     "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa0875"
     "7365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
 

@@ -168,7 +168,7 @@ TimeStamp RDBParser::parse_expiry(std::ifstream &fin, RDBParser::Delimiters deli
 
     // Reverse will reverse all our hex numbers, so we need to reverse each block of 2 again
     for (int i = 0; i < expiry_timestamp.size(); i += 2) {
-        char tmp = expiry_timestamp[i];
+        const char tmp = expiry_timestamp[i];
         expiry_timestamp[i] = expiry_timestamp[i + 1];
         expiry_timestamp[i + 1] = tmp;
     }

@@ -119,8 +119,9 @@ std::vector<std::pair<DecodedMessage, int>> MessageParser::parse_message(std::st
 }
 
 DecodedMessage MessageParser::parse_simple_string(std::string_view raw_message) {
-    std::string message = std::string{raw_message.substr(1, raw_message.size() - 1)};
-    DecodedMessage tokens = split(message, DELIM);
+    raw_message.remove_prefix(1);
+    raw_message.remove_suffix(1);
+    DecodedMessage tokens = split(raw_message, DELIM);
     return tokens;
 }
 
@@ -130,7 +131,7 @@ DecodedMessage MessageParser::parse_bulk_string(std::string_view raw_message) {
 }
 
 DecodedMessage MessageParser::parse_array(std::string_view raw_message) {
-    std::vector<std::string> tokens = split(raw_message, DELIM);
+    const std::vector<std::string> tokens = split(raw_message, DELIM);
 
     DecodedMessage res;
     for (int i = 2; i < tokens.size(); i += 2) {

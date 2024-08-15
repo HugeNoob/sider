@@ -29,8 +29,8 @@ int Handler::handle_client(int client_socket, Server &server) {
         return 1;
     }
 
-    std::string msg(buf.data());
-    LOG("Port " << server_info.tcp_port << ", message received from " << client_socket << ": " << msg);
+    std::string_view msg(buf.data());
+    LOG("Port " << server_info.tcp_port << ", message received from " << client_socket << ": " << msg.data());
 
     if (msg == null_bulk_string) return 0;
 

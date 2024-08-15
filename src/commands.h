@@ -12,7 +12,7 @@
 
 class CommandParseError : public std::runtime_error {
    public:
-    CommandParseError(std::string &&error_msg);
+    CommandParseError(std::string_view error_msg);
 };
 
 enum class CommandType { Ping, Echo, Set, Get, Info, Replconf, Psync, Wait, ConfigGet, Keys, Type, XAdd };
@@ -94,7 +94,7 @@ class PsyncCommand : public Command {
     static void initialiseEmptyRdb();
 
    private:
-    static std::string empty_rdb_hardcoded;
+    static constexpr std::string_view empty_rdb_hardcoded;
     static std::string empty_rdb_in_bytes;
     static bool empty_rdb_initialised;
 };
@@ -125,4 +125,4 @@ class ConfigGetCommand : public Command {
     std::vector<std::string> params;
 };
 
-void propagate_command(const RESPMessage &command, ServerInfo &server_info);
+void propagate_command(const std::string_view &command, ServerInfo &server_info);

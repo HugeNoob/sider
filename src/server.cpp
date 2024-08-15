@@ -21,7 +21,7 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
     server_info.tcp_port = 6379;
 
     for (int i = 1; i < argc; i++) {
-        std::string arg = argv[i];
+        std::string_view arg = argv[i];
         if (arg == "--port") {
             if (i + 1 >= argc) {
                 throw std::invalid_argument("Error: --port requires an argument");
@@ -39,14 +39,15 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
                 throw std::invalid_argument("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
             }
 
-            std::string replica_info = argv[++i];
-            int j = replica_info.find(' ');
+            std::string_view replica_info = argv[++i];
+            const int j = replica_info.find(' ');
             if (j == std::string::npos) {
                 throw std::invalid_argument("--replicaof requires \"<MASTER_HOST> <MASTER_PORT>\"");
             }
 
             server_info.replication_info.master_host = replica_info.substr(0, j);
-            server_info.replication_info.master_port = stoi(replica_info.substr(j + 1, replica_info.size() - j - 1));
+            server_info.replication_info.master_port =
+                stoi(std::string(replica_info.substr(j + 1, replica_info.size() - j - 1)));
             if (server_info.replication_info.master_port < 0) {
                 throw std::invalid_argument("master_port must be a non-negative integer");
             }
@@ -61,7 +62,7 @@ ServerInfo ServerInfo::parse(int argc, char **argv) {
             }
             server_info.dbfilename = argv[++i];
         } else {
-            throw std::invalid_argument("Unknown option '" + arg + "'.\n");
+            throw std::invalid_argument("Unknown option '" + std::string(arg) + "'.\n");
         }
     }
 
@@ -104,8 +105,8 @@ int Server::handshake_master(ServerInfo &server_info) {
 
     std::string master_host = server_info.replication_info.master_host;
     if (master_host == "localhost") master_host = "127.0.0.1";
-    int master_port = server_info.replication_info.master_port;
-    int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+    const int master_port = server_info.replication_info.master_port;
+    const int master_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (master_fd == -1) {
         ERROR("Failed to create master server socket");
         return 1;
@@ -281,7 +282,7 @@ std::string generate_replid() {
     std::string replid;
     replid.reserve(40);
 
-    const std::string charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    constexpr const std::string_view charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, charset.length() - 1);

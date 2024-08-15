@@ -82,7 +82,7 @@ void parse_size(std::stringstream& ss) {
 }
 
 int main() {
-    std::string hexString =
+    constexpr const std::string_view hexString =
         "52 45 44 49 53 30 30 30 33 fa 0a 72 65 64 69 73 "
         "2d 62 69 74 73 c0 40 fa 09 72 65 64 69 73 2d 76 "
         "65 72 05 37 2e 32 2e 30 fe 00 fb 03 03 fc 00 0c "
@@ -92,7 +92,7 @@ int main() {
         "8a c7 01 00 00 00 09 62 6c 75 65 62 65 72 72 79 "
         "05 6d 61 6e 67 6f ff c1 fd c1 7f b8 2e 3f 50 0a ";
 
-    std::string filePath = "dump.rdb";
+    constexpr const std::string_view filePath = "dump.rdb";
     writeBinaryFile(filePath, hexString);
     return 0;
 }
