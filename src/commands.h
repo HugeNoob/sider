@@ -24,8 +24,6 @@ class Command {
    public:
     static CommandPtr parse(const DecodedMessage &decoded_msg);
 
-    Command(CommandType type);
-
     virtual ~Command() = default;
 
     CommandType get_type() const;
@@ -35,6 +33,8 @@ class Command {
     virtual void execute(ServerInfo &server_info) = 0;
 
    protected:
+    Command(CommandType type);
+
     CommandType type;
     int client_socket = 0;
 };
@@ -94,7 +94,9 @@ class PsyncCommand : public Command {
     static void initialiseEmptyRdb();
 
    private:
-    static constexpr std::string_view empty_rdb_hardcoded;
+    static constexpr const std::string_view empty_rdb_hardcoded =
+        "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa0875"
+        "7365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
     static std::string empty_rdb_in_bytes;
     static bool empty_rdb_initialised;
 };

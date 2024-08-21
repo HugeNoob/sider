@@ -98,12 +98,12 @@ EchoCommand::EchoCommand(std::string &&echo_msg) : Command(CommandType::Echo), e
 
 // Example: ECHO ...args
 CommandPtr EchoCommand::parse(const DecodedMessage &decoded_msg) {
-    const std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
+    std::string echo_msg = std::accumulate(decoded_msg.begin() + 1, decoded_msg.end(), std::string{});
     return std::make_unique<EchoCommand>(std::move(echo_msg));
 }
 
 void EchoCommand::execute(ServerInfo &server_info) {
-    const std::string_view encoded_echo_msg = MessageParser::encode_bulk_string(this->echo_msg);
+    std::string encoded_echo_msg = MessageParser::encode_bulk_string(this->echo_msg);
     send(this->client_socket, encoded_echo_msg.data(), encoded_echo_msg.size(), 0);
 }
 
@@ -146,10 +146,6 @@ void ReplconfCommand::execute(ServerInfo &server_info) {
     }
     send(this->client_socket, message.c_str(), message.size(), 0);
 }
-
-constexpr const std::string_view PsyncCommand::empty_rdb_hardcoded =
-    "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa0875"
-    "7365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2";
 
 std::string PsyncCommand::empty_rdb_in_bytes = "";
 
@@ -205,7 +201,7 @@ CommandPtr WaitCommand::parse(const DecodedMessage &decoded_msg) {
 
     const int timeout_milliseconds = std::stoi(decoded_msg[2]);
     const int responses_needed = std::stoi(decoded_msg[1]);
-    const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     return std::make_unique<WaitCommand>(timeout_milliseconds, responses_needed, std::move(start));
 }
 
