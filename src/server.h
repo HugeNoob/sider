@@ -12,13 +12,8 @@ struct ServerInfo {
     int tcp_port;
     std::vector<int> client_sockets;
     int bytes_propagated = 0;
-
     std::string dir = "";
     std::string dbfilename = "";
-
-    static ServerInfo parse(int argc, char **argv);
-
-    bool is_replica() const;
 
     struct ReplicationInfo {
         std::string master_host = "";
@@ -26,11 +21,12 @@ struct ServerInfo {
         std::string master_replid;  // length 40 random string
         int master_repl_offset = 0;
         int master_port = -1;
-
         bool _is_replica;
-
         std::unordered_set<int> replica_connections;
     } replication_info;
+
+    static ServerInfo parse(int argc, char **argv);
+    bool is_replica() const;
 };
 
 class Server;
@@ -39,6 +35,13 @@ using ServerPtr = std::unique_ptr<Server>;
 class Server {
    public:
     Server(ServerInfo &&server_info);
+
+    Server(const Server &) = delete;
+    Server &operator=(const Server &) = delete;
+
+    Server(Server &&) noexcept;
+    Server &operator=(Server &&) noexcept;
+
     ~Server();
 
     void listen();
@@ -53,7 +56,7 @@ class Server {
     StoragePtr storage_ptr;
 
     void start();
-
+    void close_all_connections();
     int handshake_master(ServerInfo &server_info);
 };
 

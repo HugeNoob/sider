@@ -22,9 +22,13 @@ using CommandPtr = std::unique_ptr<Command>;
 
 class Command {
    public:
-    static CommandPtr parse(const DecodedMessage &decoded_msg);
-
+    Command(const Command &) = delete;
+    Command(Command &&) = delete;
+    Command &operator=(const Command &) = delete;
+    Command &operator=(Command &&) = delete;
     virtual ~Command() = default;
+
+    static CommandPtr parse(const DecodedMessage &decoded_msg);
 
     CommandType get_type() const;
 
@@ -33,10 +37,10 @@ class Command {
     virtual void execute(ServerInfo &server_info) = 0;
 
    protected:
-    Command(CommandType type);
-
     CommandType type;
     int client_socket = 0;
+
+    Command(CommandType type);
 };
 
 class PingCommand : public Command {

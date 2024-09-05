@@ -77,10 +77,27 @@ Server::Server(ServerInfo &&server_info) : server_info(std::move(server_info)) {
     this->start();
 }
 
-Server::~Server() {
-    for (int client_fd : this->server_info.client_sockets) close(client_fd);
+Server::Server(Server &&other) noexcept : server_info(std::move(other.server_info)), server_fd(other.server_fd) {
+    other.server_info.client_sockets.clear();
+    other.server_info.replication_info.replica_connections.clear();
+    other.server_fd = -1;
+}
 
-    close(this->server_fd);
+Server &Server::operator=(Server &&other) noexcept {
+    if (this == &other) return *this;
+
+    this->server_info = std::move(other.server_info);
+    this->server_fd = other.server_fd;
+
+    other.server_info.client_sockets.clear();
+    other.server_info.replication_info.replica_connections.clear();
+    other.server_fd = -1;
+
+    return *this;
+}
+
+Server::~Server() {
+    close_all_connections();
 }
 
 ServerInfo &Server::get_server_info() {
@@ -93,6 +110,12 @@ int Server::get_server_fd() const {
 
 StoragePtr Server::get_storage_ptr() {
     return this->storage_ptr;
+}
+
+void Server::close_all_connections() {
+    for (int client_fd : this->server_info.client_sockets) close(client_fd);
+
+    if (this->server_fd != -1) close(this->server_fd);
 }
 
 // Handshake steps:

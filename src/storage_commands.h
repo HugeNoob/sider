@@ -9,11 +9,10 @@
 */
 class StorageCommand : public Command {
    public:
-    StorageCommand(CommandType type);
-
     void set_store_ref(StoragePtr storage_ptr);
 
    protected:
+    StorageCommand(CommandType type);
     StoragePtr storage_ptr;
 };
 
